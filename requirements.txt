@@ -1,0 +1,4 @@
+Pillow==9.2.0
+PyQt6==6.3.1
+PyQt6-Qt6==6.3.1
+PyQt6-sip==13.4.0
