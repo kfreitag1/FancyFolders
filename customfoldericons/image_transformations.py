@@ -1,61 +1,68 @@
-import enum
 import math
-from sys import maxsize
-from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops, ImageColor
-from PySide6.QtCore import QSize
+from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
+from customfoldericons.constants import FolderStyle, SFFont
 
 from customfoldericons.utilities import resource_path
 
-class FolderStyle(enum.Enum):
-  big_sur_light = "big_sur_light.png"
-  big_sur_dark = "big_sur_dark.png"
-  catalina = "catalina.png"
+def generate_folder_icon_from_text(text, font_style = SFFont.heavy, folder_style = FolderStyle.big_sur_light, **options):
+  if text.strip() == "": 
+    return Image.open(resource_path("assets/" + folder_style.filename()))
 
-def generate_folder_icon_from_text(text, folder_style = FolderStyle.big_sur_light, **options):
-  base_folder_image = Image.open(resource_path("assets/" + folder_style.value))
+  folder_size = folder_style.size()
 
-  folder_size = base_folder_image.size
-  buffer_size = (folder_size[0] * 3, folder_size[1] * 2)
+  # TODO set default fonts
+  print(font_style)
+  print(font_style.filename())
+  font = ImageFont.truetype(font_style.filename(), int(folder_size/2))
 
-
-  # TODO: add option to change font
-  font = ImageFont.truetype("SF-Pro-Text-Regular.otf", int(folder_size[0]/2))
-
-  text_image = Image.new("L", buffer_size)
-  text_draw = ImageDraw.Draw(text_image)
-
-  text_draw.text((buffer_size[0]/2, buffer_size[1]/2), text, fill="white", anchor="mm", font=font)
-  text_bbox = text_draw.textbbox((buffer_size[0]/2, buffer_size[1]/2), text, anchor="mm", font=font)
-
-  text_image = text_image.crop(text_bbox)
+  text_draw_options = {
+    "text": text,
+    "anchor": "mm",
+    "align": "center",
+    "spacing": int(folder_size / 8),
+    "font": font
+  }
   
+  temp_draw = ImageDraw.Draw(Image.new("L", (0,0)))
+  text_bbox = temp_draw.textbbox((0, 0), **text_draw_options)
+  text_size = (text_bbox[2] + abs(text_bbox[0]), text_bbox[3] + abs(text_bbox[1]))
+  text_center = (abs(text_bbox[0]), abs(text_bbox[1]))
+
+  text_image = Image.new("L", text_size)
+  text_draw = ImageDraw.Draw(text_image)
+  text_draw.text(text_center, **text_draw_options, fill="white")
+
   # text_draw.rectangle(text_draw.textbbox((size[0]/2, size[1]/2), text, anchor="mm", font=font) , outline="red")
   # text_draw.line( [mask_image.width/2, 0, mask_image.width/2, mask_image.height] , width=2, fill="red")
 
-  return _generate_folder_icon(base_folder_image, text_image, **options)
+  return _generate_folder_icon(text_image, folder_style, **options)
 
 
 def generate_folder_icon_from_image(image: Image, folder_style = FolderStyle.big_sur_light, **options):
-  base_folder_image = Image.open(resource_path("assets/" + folder_style.value))
-  
   image = image.convert("L")
   image = normalized_image(image)
   image = ImageChops.invert(image)
 
-  return _generate_folder_icon(base_folder_image, image, **options)
+  return _generate_folder_icon(image, folder_style, **options)
 
 
-def _generate_folder_icon(folder_image: Image, mask_image: Image, icon_scale=0.9, shadow_color="#adbfc7", center_color="#c5dbe3"):
-  folder_size = folder_image.size
+def _generate_folder_icon(mask_image: Image, folder_style: FolderStyle, icon_scale=0.9, shadow_color="#78b4cc", center_color="#86c9e4"):
+  # TODO add highlight on top to make closer to native images
+  # TODO make shadows and highlights independant
+  # TODO make shadow and center color based on single final colour
+  folder_image = Image.open(resource_path("assets/" + folder_style.filename()))
+  folder_size = folder_style.size()
 
   bounding_box_percentages = (0.086, 0.29, 0.914, 0.777)
-  bounding_box = tuple(int(folder_size[0] * percent) for percent in bounding_box_percentages)
-  new_bounding_box = scaled_box(bounding_box, icon_scale, folder_size)
+  bounding_box = tuple(int(folder_size * percent) for percent in bounding_box_percentages)
+  new_bounding_box = scaled_box(bounding_box, icon_scale, (folder_size, folder_size))
 
-  formatted_mask = Image.new("L", folder_size, "black")
+  formatted_mask = Image.new("L", (folder_size, folder_size), "black")
 
   scaled_image, paste_box = resize_image_in_box(mask_image, new_bounding_box)
   formatted_mask.paste(scaled_image, paste_box, scaled_image)
+
+  # formatted_mask.show()
 
   # draw = ImageDraw.Draw(formatted_mask)
   # draw.rectangle(bounding_box, outline="red")
@@ -63,27 +70,43 @@ def _generate_folder_icon(folder_image: Image, mask_image: Image, icon_scale=0.9
 
   # formatted_mask.show()
 
-  logo_image = Image.composite(
+  shadow_image = Image.composite(
     Image.new("RGB", formatted_mask.size, center_color),
     Image.new("RGB", formatted_mask.size, shadow_color),
     formatted_mask
   )
+  shadow_image = shadow_image.filter(ImageFilter.GaussianBlur(3))
+  shadow_image = ImageChops.offset(shadow_image, 0, 3)
 
-  blur_filter = ImageFilter.GaussianBlur(3)
-  logo_image = logo_image.filter(blur_filter)
-  logo_image = ImageChops.offset(logo_image, 2)
+  shadow_image.putalpha(formatted_mask)
+  # shadow_image.show()
 
-  logo_image.putalpha(formatted_mask)
+  shadow_insert = ImageChops.multiply(folder_image, shadow_image)
+  # shadow_insert.show()
+
+
+
+  highlight_image = Image.composite(
+    Image.new("RGBA", formatted_mask.size, "#131313"),
+    Image.new("RGBA", formatted_mask.size, "black"),
+    formatted_mask
+  )
+  highlight_image = highlight_image.filter(ImageFilter.GaussianBlur(6))
+  highlight_image = ImageChops.offset(highlight_image, 0, 8)
+  highlight_image.show()
+  highlight_image.putalpha(0)
+  # highlight_image.show()
+
+  highlight_insert = ImageChops.add(folder_image, highlight_image)
+  # highlight_insert.show()
+
 
   # icon_insert = ImageChops.offset(
   #   ImageChops.multiply(folder_image, logo_image), 
   #   int(logo_offset[0] * formatted_mask.size[0]), int(logo_offset[1] * formatted_mask.size[1])
   # )
-  icon_insert = ImageChops.multiply(folder_image, logo_image)
 
-  folder_image.alpha_composite(icon_insert)
-
-  return folder_image
+  return Image.alpha_composite(highlight_insert, shadow_insert)
 
 
 def normalized_image(image: Image, steepness=0.15):

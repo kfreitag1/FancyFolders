@@ -16,3 +16,9 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
+
+# COLOUR UTILITIES
+
+def divide_colour(starting_colour, final_colour):
+  pass
+
