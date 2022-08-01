@@ -1,5 +1,14 @@
 from enum import Enum
 
+ICON_SCALE_SLIDER_MAX = 31
+
+MAXIMUM_ICON_SCALE_VALUE = 1.5
+MINIMUM_ICON_SCALE_VALUE = 0.1
+
+SHADOW_INCREASE_FACTOR = 1.9
+
+ICON_BOX_SCALING_FACTOR = 0.84
+
 class FolderStyle(Enum):
   big_sur_light = 1
   big_sur_dark = 2
@@ -56,8 +65,10 @@ class SFFont(Enum):
       SFFont.thin: "SF-Pro-Text-Thin.otf",
       SFFont.regular: "SF-Pro-Text-Regular.otf",
       SFFont.medium: "SF-Pro-Text-Medium.otf",
-      SFFont.semibold: "SF-Pro-Text-semibold.otf",
+      SFFont.semibold: "SF-Pro-Text-Semibold.otf",
       SFFont.bold: "SF-Pro-Text-Bold.otf",
       SFFont.heavy: "SF-Pro-Text-Heavy.otf",
       SFFont.black: "SF-Pro-Text-Black.otf",
     }[self]
+
+BACKUP_FONTS = ["SFNS.ttf", "System San Francisco Text Medium.ttf"]

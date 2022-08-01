@@ -2,30 +2,30 @@ from io import BytesIO
 import os
 from PySide6.QtCore import QPoint, QPropertyAnimation, Qt
 from PySide6.QtGui import QDragEnterEvent, QDragMoveEvent, QDropEvent, QFont, QMouseEvent, QPaintEvent, QPainter, QPixmap
-from PySide6.QtWidgets import QApplication, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QSlider, QVBoxLayout, QWidget
 from PIL.ImageQt import ImageQt
 from PIL import Image
 import Cocoa
 
-from customfoldericons.constants import FolderStyle, SFFont
-from customfoldericons.image_transformations import generate_folder_icon_from_image, generate_folder_icon_from_text
-from customfoldericons.utilities import resource_path
+from customfoldericons.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, FolderStyle, SFFont
+from customfoldericons.image_transformations import generate_folder_icon, generate_mask_from_image, generate_mask_from_text
+from customfoldericons.utilities import interpolate_int_to_float_with_midpoint, resource_path
 
 
 class CenterIcon(QLabel):
-  def __init__(self, image):
+  def __init__(self):
     super().__init__()
 
     self.setMinimumSize(400,400)
     self.setAcceptDrops(True)
 
-    self.set_image(image)
+    # self.set_image(image)
 
   def set_image(self, image):
     self.pixmap = QPixmap(image)
     self.update()
 
-  def paintEvent(self, event: QPaintEvent) -> None:
+  def paintEvent(self, _: QPaintEvent) -> None:
     size = self.size()
     painter = QPainter(self)
     point = QPoint(0,0)
@@ -49,21 +49,48 @@ class NonEditableLine(QLineEdit):
   def set_text(self, text):
     self.text = text
 
-
 class MainWindow(QMainWindow):
   def __init__(self):
     super().__init__()
 
     self.image = None
+
+    self.image_mask = None
+    self.image_text = ""
     self.output_folder = None
     self.output_location_directory = os.path.join(os.path.join(os.path.expanduser("~")), "Desktop")
     self.folder_style = FolderStyle.big_sur_light
-    self.font_style = SFFont.black
+    self.font_style = SFFont.bold
     self.icon_scale = 1
 
-    self.center_image = CenterIcon(ImageQt(Image.open(resource_path("assets/" + self.folder_style.filename()))))
+    self.center_image = CenterIcon()
     self.center_image.dragEnterEvent = self.unified_drag_enter
     self.center_image.dropEvent = self.unified_drop
+
+    self.scale_slider = QSlider(Qt.Horizontal)
+    self.scale_slider.setMinimum(1)
+    self.scale_slider.setMaximum(ICON_SCALE_SLIDER_MAX)
+    self.scale_slider.setMinimumHeight(40)
+    self.scale_slider.setTickInterval(ICON_SCALE_SLIDER_MAX + 1)
+    self.scale_slider.setTickPosition(QSlider.TicksBelow)
+    self.scale_slider.setValue(int((ICON_SCALE_SLIDER_MAX - 1)/2) + 1)
+    self.scale_slider.setTracking(False)
+    self.scale_slider.valueChanged.connect(self.icon_scale_changed)
+
+    self.font_weight_slider = QSlider(Qt.Horizontal)
+    self.font_weight_slider.setMinimum(1)
+    self.font_weight_slider.setMaximum(8)
+    self.font_weight_slider.setMinimumHeight(40)
+    self.font_weight_slider.setTickInterval(1)
+    self.font_weight_slider.setTickPosition(QSlider.TicksBelow)
+    self.font_weight_slider.setValue(self.font_style.value)
+    self.font_weight_slider.setTracking(False)
+    self.font_weight_slider.valueChanged.connect(self.font_weight_changed)
+
+    scale_font_weight_layout = QHBoxLayout()
+    scale_font_weight_layout.addWidget(self.scale_slider)
+    scale_font_weight_layout.addWidget(self.font_weight_slider)
+
 
     self.icon_input_field = QLineEdit()
     self.icon_input_field.setMaxLength(100)
@@ -74,7 +101,7 @@ class MainWindow(QMainWindow):
     # self.dragEnterEvent = self.unified_drag_enter
     # self.dropEvent = self.unified_drop
 
-    self.generate_button = QPushButton("Generate Folder")
+    self.generate_button = QPushButton("Save Icon")
     self.generate_button.clicked.connect(self.generate_folder)
 
     input_generate_layout = QHBoxLayout()
@@ -103,22 +130,31 @@ class MainWindow(QMainWindow):
     main_layout = QVBoxLayout()
     main_layout.setSpacing(1)
     main_layout.addWidget(self.center_image)
+    main_layout.addLayout(scale_font_weight_layout)
     main_layout.addLayout(input_generate_layout)
     main_layout.addWidget(self.folder_replacement_field)
     main_layout.addLayout(folder_output_layout)
     # inputs_layout.addLayout(advanced_options, 3, 0, 3, 1)
 
-
     main_widget = QWidget()
     main_widget.setLayout(main_layout)
     self.setCentralWidget(main_widget)
 
-    self.set_output_location_directory(self.output_location_directory)
     main_widget.setFocus()
+    self.set_output_location_directory(self.output_location_directory)
+    self.update_and_generate_image()
 
-  def set_image(self, image: Image):
-    self.image = image
+  def update_and_generate_image(self):
+    self.image = generate_folder_icon(
+      self.folder_style,
+      mask_image=self.image_mask,
+      icon_scale=self.icon_scale,
+    )
     self.center_image.set_image(ImageQt(self.image))
+
+  # def set_image(self, image: Image):
+  #   self.image = image
+  #   self.center_image.set_image(ImageQt(self.image))
 
   def generate_folder(self):
     path = self.output_folder
@@ -149,7 +185,22 @@ class MainWindow(QMainWindow):
       self.set_output_location_directory(path)
 
   def icon_text_changed(self, text):
-    self.set_image(generate_folder_icon_from_text(text, font_style=self.font_style, folder_style=self.folder_style))
+    print(self.font_style)
+    self.image_text = text
+    self.image_mask = generate_mask_from_text(text, font_style=self.font_style, folder_style=self.folder_style)
+    self.update_and_generate_image()
+
+  def icon_scale_changed(self, value):
+    self.icon_scale = interpolate_int_to_float_with_midpoint(
+      value, 1, ICON_SCALE_SLIDER_MAX, MINIMUM_ICON_SCALE_VALUE, 1.0, MAXIMUM_ICON_SCALE_VALUE
+    )
+    self.update_and_generate_image()
+
+  def font_weight_changed(self, value):
+    self.font_style = SFFont(value)
+    if self.image_text != "":
+      self.image_mask = generate_mask_from_text(self.image_text, font_style=self.font_style, folder_style=self.folder_style)
+    self.update_and_generate_image()
 
   def set_output_folder(self, path):
     self.output_folder = path
@@ -180,7 +231,9 @@ class MainWindow(QMainWindow):
 
     if data.hasFormat("application/x-qt-image"):
       image = Image.fromqimage(data.imageData())
-      self.set_image(generate_folder_icon_from_image(image, folder_style=self.folder_style))
+      self.image_text = ""
+      self.image_mask = generate_mask_from_image(image, folder_style=self.folder_style)
+      self.update_and_generate_image()
 
     # else check if directory or file with text/uri-list, starts with file://
 
@@ -196,14 +249,18 @@ class MainWindow(QMainWindow):
         elif os.path.isfile(path):
           try:
             file_image = Image.open(path)
-            self.set_image(generate_folder_icon_from_image(file_image, folder_style=self.folder_style))
+            self.image_text = ""
+            self.image_mask = generate_mask_from_image(file_image, folder_style=self.folder_style)
+            self.update_and_generate_image()
           except:
-            print("ERROR OPENING IMAGE")
+            print("NOT IMAGE OR COULD NOT OPEN")
 
     # else must be simple text text/plain, make sure has no url text/uri-list
 
     elif data.hasFormat("text/plain"):
-      self.set_image(generate_folder_icon_from_text(data.text(), font_style=self.font_style, folder_style=self.folder_style))
+      self.image_text = data.text()
+      self.image_mask = generate_mask_from_text(data.text(), font_style=self.font_style, folder_style=self.folder_style)
+      self.update_and_generate_image()
 
     event.accept()
 

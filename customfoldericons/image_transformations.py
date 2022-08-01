@@ -1,19 +1,17 @@
 import math
 from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
-from customfoldericons.constants import FolderStyle, SFFont
+from customfoldericons.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, SHADOW_INCREASE_FACTOR, FolderStyle, SFFont
 
-from customfoldericons.utilities import resource_path
+from customfoldericons.utilities import divided_colour, get_first_font_installed, resource_path
 
-def generate_folder_icon_from_text(text, font_style = SFFont.heavy, folder_style = FolderStyle.big_sur_light, **options):
-  if text.strip() == "": 
-    return Image.open(resource_path("assets/" + folder_style.filename()))
+def generate_mask_from_text(text, font_style = SFFont.heavy, folder_style = FolderStyle.big_sur_light):
+  if text.strip() == "": return None
 
   folder_size = folder_style.size()
 
-  # TODO set default fonts
-  print(font_style)
-  print(font_style.filename())
-  font = ImageFont.truetype(font_style.filename(), int(folder_size/2))
+  font_filename = get_first_font_installed([font_style.filename()] + BACKUP_FONTS)
+  print("first font filename", font_filename)
+  font = ImageFont.truetype(font_filename, int(folder_size/2))
 
   text_draw_options = {
     "text": text,
@@ -35,27 +33,30 @@ def generate_folder_icon_from_text(text, font_style = SFFont.heavy, folder_style
   # text_draw.rectangle(text_draw.textbbox((size[0]/2, size[1]/2), text, anchor="mm", font=font) , outline="red")
   # text_draw.line( [mask_image.width/2, 0, mask_image.width/2, mask_image.height] , width=2, fill="red")
 
-  return _generate_folder_icon(text_image, folder_style, **options)
+  return text_image
 
 
-def generate_folder_icon_from_image(image: Image, folder_style = FolderStyle.big_sur_light, **options):
+def generate_mask_from_image(image: Image):
   image = image.convert("L")
   image = normalized_image(image)
-  image = ImageChops.invert(image)
-
-  return _generate_folder_icon(image, folder_style, **options)
+  return ImageChops.invert(image)
 
 
-def _generate_folder_icon(mask_image: Image, folder_style: FolderStyle, icon_scale=0.9, shadow_color="#78b4cc", center_color="#86c9e4"):
-  # TODO add highlight on top to make closer to native images
+def generate_folder_icon(folder_style: FolderStyle, mask_image: Image = None, icon_scale=1.0, shadow_colour="#78b4cc"):
   # TODO make shadows and highlights independant
   # TODO make shadow and center color based on single final colour
   folder_image = Image.open(resource_path("assets/" + folder_style.filename()))
+  folder_image = increased_shadow(folder_image, factor=SHADOW_INCREASE_FACTOR)
+
+  if mask_image is None: return folder_image
+
   folder_size = folder_style.size()
 
   bounding_box_percentages = (0.086, 0.29, 0.914, 0.777)
   bounding_box = tuple(int(folder_size * percent) for percent in bounding_box_percentages)
-  new_bounding_box = scaled_box(bounding_box, icon_scale, (folder_size, folder_size))
+  new_bounding_box = scaled_box(
+    bounding_box, icon_scale * ICON_BOX_SCALING_FACTOR, (folder_size, folder_size)
+  )
 
   formatted_mask = Image.new("L", (folder_size, folder_size), "black")
 
@@ -70,9 +71,11 @@ def _generate_folder_icon(mask_image: Image, folder_style: FolderStyle, icon_sca
 
   # formatted_mask.show()
 
+  center_colour = divided_colour(folder_style.base_colour(), folder_style.icon_colour())
+
   shadow_image = Image.composite(
-    Image.new("RGB", formatted_mask.size, center_color),
-    Image.new("RGB", formatted_mask.size, shadow_color),
+    Image.new("RGB", formatted_mask.size, center_colour),
+    Image.new("RGB", formatted_mask.size, shadow_colour),
     formatted_mask
   )
   shadow_image = shadow_image.filter(ImageFilter.GaussianBlur(3))
@@ -93,7 +96,7 @@ def _generate_folder_icon(mask_image: Image, folder_style: FolderStyle, icon_sca
   )
   highlight_image = highlight_image.filter(ImageFilter.GaussianBlur(6))
   highlight_image = ImageChops.offset(highlight_image, 0, 8)
-  highlight_image.show()
+  # highlight_image.show()
   highlight_image.putalpha(0)
   # highlight_image.show()
 
@@ -108,6 +111,10 @@ def _generate_folder_icon(mask_image: Image, folder_style: FolderStyle, icon_sca
 
   return Image.alpha_composite(highlight_insert, shadow_insert)
 
+def increased_shadow(folder_image, factor):
+  r, g, b, a = folder_image.split()
+  a = a.point(lambda x: min(int(x * factor), 255))
+  return Image.merge("RGBA", (r, g, b, a))
 
 def normalized_image(image: Image, steepness=0.15):
   """Normalizes the pixel data from the grayscale image to 0 - 255 and applies a sigmoid function
