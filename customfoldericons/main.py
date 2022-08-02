@@ -1,15 +1,15 @@
+from email.policy import Policy
 from io import BytesIO
 import os
-from textwrap import fill
 from PySide6.QtCore import QPoint, QPropertyAnimation, QRect, Qt
-from PySide6.QtGui import QBrush, QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QFont, QMouseEvent, QPaintEvent, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QApplication, QButtonGroup, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QSlider, QVBoxLayout, QWidget
+from PySide6.QtGui import QBrush, QColor, QConicalGradient, QDragEnterEvent, QDragMoveEvent, QDropEvent, QFont, QMouseEvent, QPaintEvent, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QApplication, QButtonGroup, QColorDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QSizePolicy, QSlider, QSpacerItem, QVBoxLayout, QWidget
 from PIL.ImageQt import ImageQt
 from PIL import Image
 import Cocoa
 
 from customfoldericons.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, FolderStyle, SFFont, TintColour
-from customfoldericons.image_transformations import generate_colour_map_lookup_table, generate_folder_icon, generate_mask_from_image, generate_mask_from_text
+from customfoldericons.image_transformations import generate_folder_icon, generate_mask_from_image, generate_mask_from_text
 from customfoldericons.utilities import interpolate_int_to_float_with_midpoint, resource_path
 
 
@@ -19,6 +19,7 @@ class CenterIcon(QLabel):
   def __init__(self):
     super().__init__()
 
+    self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     self.setMinimumSize(*self.MINIMUM_SIZE)
     self.setAcceptDrops(True)
 
@@ -103,7 +104,20 @@ class ColourRadioButton(QRadioButton):
 
       painter.drawLine(start_point, end_point)
     if self.is_multicolour:
-      ...
+      center_point = center_rect.center()
+      rainbow_gradient = QConicalGradient(center_point, 0)
+      rainbow_gradient.setColorAt(0.0, QColor(*TintColour.red.value))
+      rainbow_gradient.setColorAt(0.2, QColor(*TintColour.yellow.value))
+      rainbow_gradient.setColorAt(0.5, QColor(*TintColour.orange.value))
+      rainbow_gradient.setColorAt(0.8, QColor(*TintColour.purple.value))
+      rainbow_gradient.setColorAt(1.0, QColor(*TintColour.red.value))
+
+      rainbow_pen = QPen(rainbow_gradient, 5.0)
+
+      painter.setPen(rainbow_pen)
+      painter.setBrush(Qt.NoBrush)
+
+      painter.drawEllipse(center_point + QPoint(1, 1), 6, 6)
 
     painter.end()
 
@@ -161,17 +175,27 @@ class MainWindow(QMainWindow):
       colour_buttons.append(ColourRadioButton(colour=tint_colour.value))
     colour_buttons.append(ColourRadioButton(multicolour=True))
 
-    colour_buttons[-1].clicked.connect(self.choose_custom_colour)
-
     for colour_button in colour_buttons:
-      colour_button.clicked.connect(self.select_colour)
+      if not colour_button.is_multicolour:
+        colour_button.clicked.connect(self.select_colour)
       self.colour_button_group.addButton(colour_button)
       colour_pallete_layout.addWidget(colour_button)
 
     colour_buttons[0].setChecked(True)
+    colour_buttons[-1].clicked.connect(self.choose_custom_colour)
 
 
+    scale_label = QLabel("Icon scale")
+    scale_label.setAlignment(Qt.AlignHCenter)
+    scale_label.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
 
+    font_weight_label = QLabel("Symbol thickness")
+    font_weight_label.setAlignment(Qt.AlignHCenter)
+    font_weight_label.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
+
+    scale_font_weight_label_container = QHBoxLayout()
+    scale_font_weight_label_container.addWidget(scale_label)
+    scale_font_weight_label_container.addWidget(font_weight_label)
 
 
     self.scale_slider = QSlider(Qt.Horizontal)
@@ -235,11 +259,15 @@ class MainWindow(QMainWindow):
     folder_output_layout.addWidget(self.folder_output_picker_button)
 
     main_layout = QVBoxLayout()
-    main_layout.setSpacing(1)
+    main_layout.setSpacing(0)
     main_layout.addWidget(self.center_image)
     main_layout.addLayout(colour_pallete_layout)
+    main_layout.addSpacerItem(QSpacerItem(0, 10))
+    main_layout.addLayout(scale_font_weight_label_container)
     main_layout.addLayout(scale_font_weight_layout)
+    main_layout.addSpacerItem(QSpacerItem(0, 15))
     main_layout.addLayout(input_generate_layout)
+    main_layout.addSpacerItem(QSpacerItem(0, 15))
     main_layout.addWidget(self.folder_replacement_field)
     main_layout.addLayout(folder_output_layout)
     # inputs_layout.addLayout(advanced_options, 3, 0, 3, 1)
@@ -258,7 +286,11 @@ class MainWindow(QMainWindow):
     self.update_and_generate_image()
 
   def choose_custom_colour(self):
-    print("TESTING")
+    colour_dialog = QColorDialog()
+    if colour_dialog.exec():
+      colour = colour_dialog.currentColor()
+      self.tint_colour = (colour.red(), colour.green(), colour.blue())
+      self.update_and_generate_image()
 
   def update_and_generate_image(self):
 
@@ -338,15 +370,6 @@ class MainWindow(QMainWindow):
 
   def unified_drop(self, event: QDropEvent):
     data = event.mimeData()
-
-    # print("text", event.mimeData().text())
-    # print("has image", event.mimeData().hasImage())
-    # print("font", re.search("'SF.*'", event.mimeData().html()).group())
-    # print("html", data.html())
-    # print("urls", event.mimeData().urls())
-    # print("formats", event.mimeData().formats())
-    # print(event.mimeData().hasFormat("application/x-qt-image"))
-    # print("image data", event.mimeData().imageData())
 
     # first check image data if format application/x-qt-image, then inder imagedata, is of QImage type
 
