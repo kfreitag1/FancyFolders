@@ -3,7 +3,7 @@
 block_cipher = None
 
 a = Analysis(
-    ['customfoldericons/main.py'],
+    ['fancyfolders/main.py'],
     pathex=[],
     binaries=[],
     datas=[("assets", "assets")],
@@ -48,7 +48,7 @@ coll = COLLECT(
 )
 app = BUNDLE(
     coll,
-    name='Custom Folder Icons.app',
+    name='Fancy Folders.app',
     icon="assets/app_icon.icns",
     bundle_identifier=None,
 )

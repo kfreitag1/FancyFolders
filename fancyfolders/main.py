@@ -8,9 +8,9 @@ from PIL.ImageQt import ImageQt
 from PIL import Image
 import Cocoa
 
-from customfoldericons.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, FolderStyle, IconGenerationMethod, SFFont, TintColour
-from customfoldericons.image_transformations import generate_folder_icon
-from customfoldericons.utilities import interpolate_int_to_float_with_midpoint
+from fancyfolders.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, FolderStyle, IconGenerationMethod, SFFont, TintColour
+from fancyfolders.image_transformations import generate_folder_icon
+from fancyfolders.utilities import interpolate_int_to_float_with_midpoint
 
 
 class CenterIcon(QLabel):
@@ -344,10 +344,10 @@ class MainWindow(QMainWindow):
     # Set folder icon to the highest resolution image
     high_resolution_image = self.generate_folder_image()
     self.center_image.set_image(ImageQt(high_resolution_image))
-    self.set_folder_icon(high_resolution_image, path)
+    # self.set_folder_icon(high_resolution_image, path)
 
-    # DEBUG
-    # high_resolution_image.save(os.path.join(self.output_location_directory, "imageoutput-" + str(randint(1, 99999)) + ".png"))
+    # DEV IMAGE SAVE
+    high_resolution_image.save(os.path.join(self.output_location_directory, "imageoutput-" + str(randint(1, 99999)) + ".png"))
 
   def open_output_location_directory(self):
     file_picker = QFileDialog(self)

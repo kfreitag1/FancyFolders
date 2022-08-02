@@ -1,9 +1,9 @@
 from colorsys import hsv_to_rgb, rgb_to_hsv
 import math
 from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
-from customfoldericons.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR, INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET, OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont
+from fancyfolders.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR, INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET, OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont
 
-from customfoldericons.utilities import clamp, divided_colour, get_first_font_installed, hsv_to_rgb_int, resource_path, rgb_int_to_hsv
+from fancyfolders.utilities import clamp, divided_colour, get_first_font_installed, hsv_to_rgb_int, resource_path, rgb_int_to_hsv
 
 def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light, generation_method: IconGenerationMethod = IconGenerationMethod.NONE, preview_size = None, icon_scale = 1.0, tint_colour = None, text = None, font_style = SFFont.heavy, image = None):
 
