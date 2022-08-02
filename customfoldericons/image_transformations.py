@@ -1,24 +1,101 @@
 from colorsys import hsv_to_rgb, rgb_to_hsv
 import math
 from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
-from customfoldericons.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, SHADOW_INCREASE_FACTOR, FolderStyle, SFFont
+from customfoldericons.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR, INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET, OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont
 
 from customfoldericons.utilities import clamp, divided_colour, get_first_font_installed, hsv_to_rgb_int, resource_path, rgb_int_to_hsv
 
-def generate_mask_from_text(text, font_style = SFFont.heavy, folder_style = FolderStyle.big_sur_light):
-  if text.strip() == "": return None
+def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light, generation_method: IconGenerationMethod = IconGenerationMethod.NONE, preview_size = None, icon_scale = 1.0, tint_colour = None, text = None, font_style = SFFont.heavy, image = None):
 
-  folder_size = folder_style.size()
+  # TODO make shadows and highlights independant
+  # TODO make shadow and center color based on single final colour
 
+  # Get base folder image
+  folder_image = Image.open(resource_path("assets/" + folder_style.filename()))
+
+  # Default size is the folder size, otherwise use the specified preview size
+  if preview_size:
+    size = preview_size
+    folder_image = folder_image.resize((size, size))
+  else:
+    size = folder_style.size()
+
+  # Darken shadow to match default macOS folders
+  folder_image = _increased_shadow(folder_image, factor=FOLDER_SHADOW_INCREASE_FACTOR)
+
+  # Generate mask image based on icon generation method
+  mask_image = None
+
+  if generation_method == IconGenerationMethod.NONE:
+    if tint_colour is None: 
+      return folder_image
+    return adjusted_colours(folder_image, folder_style.base_colour(), tint_colour)
+
+  elif generation_method == IconGenerationMethod.IMAGE:
+    mask_image = _generate_mask_from_image(image)
+
+  elif generation_method == IconGenerationMethod.TEXT:
+    mask_image = _generate_mask_from_text(text, size, font_style)
+
+  # Bounding box to place icon
+  bounding_box_percentages = (0.086, 0.29, 0.914, 0.777)
+  bounding_box = tuple(int(size * percent) for percent in bounding_box_percentages)
+  new_bounding_box = scaled_box(
+    bounding_box, icon_scale * ICON_BOX_SCALING_FACTOR, (size, size)
+  )
+
+  # Fit the icon mask within the bounding box
+  formatted_mask = Image.new("L", (size, size), "black")
+  scaled_image, paste_box = _resize_image_in_box(mask_image, new_bounding_box)
+  formatted_mask.paste(scaled_image, paste_box, scaled_image)
+
+  # Generate the center colour to be a desired colour after the multiply filter
+  center_colour = divided_colour(folder_style.base_colour(), folder_style.icon_colour())
+  
+  # Calculate shadow colour to be slightly darker than the center colour
+  center_hue, center_sat, center_val = rgb_int_to_hsv(center_colour)
+  shadow_hsv_colour = (center_hue, center_sat, center_val * INNER_SHADOW_COLOUR_SCALING_FACTOR)
+  shadow_colour = hsv_to_rgb_int(shadow_hsv_colour)
+
+  # Create shadow insert image
+  shadow_image = Image.composite(
+    Image.new("RGB", formatted_mask.size, center_colour),
+    Image.new("RGB", formatted_mask.size, shadow_colour),
+    formatted_mask
+  )
+  shadow_image = shadow_image.filter(ImageFilter.GaussianBlur(INNER_SHADOW_BLUR))
+  shadow_image = ImageChops.offset(shadow_image, 0, math.floor(size * INNER_SHADOW_Y_OFFSET))
+  shadow_image.putalpha(formatted_mask)
+  shadow_insert = ImageChops.multiply(folder_image, shadow_image)
+
+  # Create highlight insert image
+  highlight_image = Image.composite(
+    Image.new("RGBA", formatted_mask.size, "#131313"),
+    Image.new("RGBA", formatted_mask.size, "black"),
+    formatted_mask
+  )
+  highlight_image = highlight_image.filter(ImageFilter.GaussianBlur(OUTER_HIGHLIGHT_BLUR))
+  highlight_image = ImageChops.offset(highlight_image, 0, math.floor(size * OUTER_HIGHLIGHT_Y_OFFSET))
+  highlight_image.putalpha(0)
+  highlight_insert = ImageChops.add(folder_image, highlight_image)
+
+  # Combine the two
+  result = Image.alpha_composite(highlight_insert, shadow_insert)
+
+  if tint_colour is None: 
+    return result
+  return adjusted_colours(result, folder_style.base_colour(), tint_colour)
+
+
+def _generate_mask_from_text(text, image_size, font_style = SFFont.heavy):
   font_filename = get_first_font_installed([font_style.filename()] + BACKUP_FONTS)
-  print("first font filename", font_filename)
-  font = ImageFont.truetype(font_filename, int(folder_size/2))
+  font = ImageFont.truetype(font_filename, int(image_size/2))
 
   text_draw_options = {
     "text": text,
     "anchor": "mm",
     "align": "center",
-    "spacing": int(folder_size / 8),
+    "spacing": int(image_size / 8),
     "font": font
   }
   
@@ -31,99 +108,14 @@ def generate_mask_from_text(text, font_style = SFFont.heavy, folder_style = Fold
   text_draw = ImageDraw.Draw(text_image)
   text_draw.text(text_center, **text_draw_options, fill="white")
 
-  # text_draw.rectangle(text_draw.textbbox((size[0]/2, size[1]/2), text, anchor="mm", font=font) , outline="red")
-  # text_draw.line( [mask_image.width/2, 0, mask_image.width/2, mask_image.height] , width=2, fill="red")
-
   return text_image
 
 
-def generate_mask_from_image(image: Image):
+def _generate_mask_from_image(image: Image):
   image = image.convert("L")
-  image = normalized_image(image)
+  image = _normalized_image(image)
   return ImageChops.invert(image)
 
-
-def generate_folder_icon(folder_style: FolderStyle, mask_image: Image = None, icon_scale=1.0, tint_colour=None):
-  # TODO make shadows and highlights independant
-  # TODO make shadow and center color based on single final colour
-  folder_image = Image.open(resource_path("assets/" + folder_style.filename()))
-  folder_image = increased_shadow(folder_image, factor=SHADOW_INCREASE_FACTOR)
-
-  if mask_image is None: 
-    if tint_colour is None: 
-      return folder_image
-    return adjusted_colours(folder_image, folder_style.base_colour(), tint_colour)
-
-  folder_size = folder_style.size()
-
-  bounding_box_percentages = (0.086, 0.29, 0.914, 0.777)
-  bounding_box = tuple(int(folder_size * percent) for percent in bounding_box_percentages)
-  new_bounding_box = scaled_box(
-    bounding_box, icon_scale * ICON_BOX_SCALING_FACTOR, (folder_size, folder_size)
-  )
-
-  formatted_mask = Image.new("L", (folder_size, folder_size), "black")
-
-  scaled_image, paste_box = resize_image_in_box(mask_image, new_bounding_box)
-  formatted_mask.paste(scaled_image, paste_box, scaled_image)
-
-  # formatted_mask.show()
-
-  # draw = ImageDraw.Draw(formatted_mask)
-  # draw.rectangle(bounding_box, outline="red")
-  # draw.rectangle(new_bounding_box, outline="green")
-
-  # formatted_mask.show()
-
-  center_colour = divided_colour(folder_style.base_colour(), folder_style.icon_colour())
-  
-  center_hue, center_sat, center_val = rgb_int_to_hsv(center_colour)
-  shadow_hsv_colour = (center_hue, center_sat, center_val * 0.9)
-  shadow_colour = hsv_to_rgb_int(shadow_hsv_colour)
-
-  shadow_image = Image.composite(
-    Image.new("RGB", formatted_mask.size, center_colour),
-    Image.new("RGB", formatted_mask.size, shadow_colour),
-    formatted_mask
-  )
-  shadow_image = shadow_image.filter(ImageFilter.GaussianBlur(3))
-  shadow_image = ImageChops.offset(shadow_image, 0, 3)
-
-  # shadow_image.show()
-
-  shadow_image.putalpha(formatted_mask)
-  # shadow_image.show()
-
-  shadow_insert = ImageChops.multiply(folder_image, shadow_image)
-  # shadow_insert.show()
-
-
-
-  highlight_image = Image.composite(
-    Image.new("RGBA", formatted_mask.size, "#131313"),
-    Image.new("RGBA", formatted_mask.size, "black"),
-    formatted_mask
-  )
-  highlight_image = highlight_image.filter(ImageFilter.GaussianBlur(6))
-  highlight_image = ImageChops.offset(highlight_image, 0, 8)
-  # highlight_image.show()
-  highlight_image.putalpha(0)
-  # highlight_image.show()
-
-  highlight_insert = ImageChops.add(folder_image, highlight_image)
-  # highlight_insert.show()
-
-
-  # icon_insert = ImageChops.offset(
-  #   ImageChops.multiply(folder_image, logo_image), 
-  #   int(logo_offset[0] * formatted_mask.size[0]), int(logo_offset[1] * formatted_mask.size[1])
-  # )
-
-  result = Image.alpha_composite(highlight_insert, shadow_insert)
-
-  if tint_colour is None: 
-    return result
-  return adjusted_colours(result, folder_style.base_colour(), tint_colour)
 
 def generate_colour_map_lookup_table(starting_colour, final_colour):
   start_hue, start_sat, start_val = rgb_int_to_hsv(starting_colour)
@@ -149,15 +141,13 @@ def generate_colour_map_lookup_table(starting_colour, final_colour):
   return ImageFilter.Color3DLUT.generate(4, adjust_pixel_colour, 3).table
 
 def adjusted_colours(image: Image, base_colour, tint_colour):
-  print("base colour", base_colour)
-  print("tint colour", tint_colour)
   lookup_table = generate_colour_map_lookup_table(base_colour, tint_colour)
   return image.filter(ImageFilter.Color3DLUT(4, lookup_table))
 
 
 
 
-def increased_shadow(folder_image, factor):
+def _increased_shadow(folder_image, factor):
   """Returns a new image with a more intense shadow by increasing the opacity of pixels
   with tranparency
 
@@ -173,7 +163,7 @@ def increased_shadow(folder_image, factor):
 
   return Image.merge("RGBA", (r, g, b, a))
 
-def normalized_image(image: Image, steepness=0.15):
+def _normalized_image(image: Image, steepness=0.15):
   """Normalizes the pixel data from the grayscale image to 0 - 255 and applies a sigmoid function
   to bring values closer to the extremes (0 or 255).
 
@@ -196,8 +186,7 @@ def normalized_image(image: Image, steepness=0.15):
   except:
     return image
 
-
-def resize_image_in_box(image: Image, box):
+def _resize_image_in_box(image: Image, box):
   """Returns the image scaled into the bounding box with the same aspect ratio, 
   from the center
 
