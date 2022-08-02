@@ -49,6 +49,17 @@ class FolderStyle(Enum):
       FolderStyle.catalina: (63, 170, 229),  # Not set properly
     }[self]
 
+class TintColour(Enum):
+  red = (255, 154, 162)
+  melon = (255, 183, 178)
+  orange = (255, 218, 193)
+  yellow = (255, 236, 209)
+  green = (226, 240, 203)
+  teal = (181, 234, 215)
+  purple = (199, 206, 234)
+  white = (250, 249, 246)
+  cream = (255,250,240)
+
 class SFFont(Enum):
   ultralight = 1
   thin = 2

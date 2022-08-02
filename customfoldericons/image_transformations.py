@@ -1,8 +1,9 @@
+from colorsys import hsv_to_rgb, rgb_to_hsv
 import math
 from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
 from customfoldericons.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, SHADOW_INCREASE_FACTOR, FolderStyle, SFFont
 
-from customfoldericons.utilities import divided_colour, get_first_font_installed, resource_path
+from customfoldericons.utilities import clamp, divided_colour, get_first_font_installed, hsv_to_rgb_int, resource_path, rgb_int_to_hsv
 
 def generate_mask_from_text(text, font_style = SFFont.heavy, folder_style = FolderStyle.big_sur_light):
   if text.strip() == "": return None
@@ -42,13 +43,16 @@ def generate_mask_from_image(image: Image):
   return ImageChops.invert(image)
 
 
-def generate_folder_icon(folder_style: FolderStyle, mask_image: Image = None, icon_scale=1.0, shadow_colour="#78b4cc"):
+def generate_folder_icon(folder_style: FolderStyle, mask_image: Image = None, icon_scale=1.0, tint_colour=None):
   # TODO make shadows and highlights independant
   # TODO make shadow and center color based on single final colour
   folder_image = Image.open(resource_path("assets/" + folder_style.filename()))
   folder_image = increased_shadow(folder_image, factor=SHADOW_INCREASE_FACTOR)
 
-  if mask_image is None: return folder_image
+  if mask_image is None: 
+    if tint_colour is None: 
+      return folder_image
+    return adjusted_colours(folder_image, folder_style.base_colour(), tint_colour)
 
   folder_size = folder_style.size()
 
@@ -72,6 +76,10 @@ def generate_folder_icon(folder_style: FolderStyle, mask_image: Image = None, ic
   # formatted_mask.show()
 
   center_colour = divided_colour(folder_style.base_colour(), folder_style.icon_colour())
+  
+  center_hue, center_sat, center_val = rgb_int_to_hsv(center_colour)
+  shadow_hsv_colour = (center_hue, center_sat, center_val * 0.9)
+  shadow_colour = hsv_to_rgb_int(shadow_hsv_colour)
 
   shadow_image = Image.composite(
     Image.new("RGB", formatted_mask.size, center_colour),
@@ -80,6 +88,8 @@ def generate_folder_icon(folder_style: FolderStyle, mask_image: Image = None, ic
   )
   shadow_image = shadow_image.filter(ImageFilter.GaussianBlur(3))
   shadow_image = ImageChops.offset(shadow_image, 0, 3)
+
+  # shadow_image.show()
 
   shadow_image.putalpha(formatted_mask)
   # shadow_image.show()
@@ -109,11 +119,58 @@ def generate_folder_icon(folder_style: FolderStyle, mask_image: Image = None, ic
   #   int(logo_offset[0] * formatted_mask.size[0]), int(logo_offset[1] * formatted_mask.size[1])
   # )
 
-  return Image.alpha_composite(highlight_insert, shadow_insert)
+  result = Image.alpha_composite(highlight_insert, shadow_insert)
+
+  if tint_colour is None: 
+    return result
+  return adjusted_colours(result, folder_style.base_colour(), tint_colour)
+
+def generate_colour_map_lookup_table(starting_colour, final_colour):
+  start_hue, start_sat, start_val = rgb_int_to_hsv(starting_colour)
+  final_hue, final_sat, final_val = rgb_int_to_hsv(final_colour)
+
+  hue_offset = final_hue - start_hue
+  sat_factor = final_sat / start_sat
+  val_factor = final_val / start_val
+  # sat_offset = final_sat - start_sat
+  # val_offset = final_val - start_val
+
+  def adjust_pixel_colour(r, g, b):
+    h, s, v = rgb_to_hsv(r, g, b)
+
+    h = (h + hue_offset) % 1.0
+    s = clamp(s * sat_factor, 0.0, 1.0)
+    v = clamp(v * val_factor, 0.0, 1.0)
+    # s = clamp(s + sat_offset, 0.0, 1.0)
+    # v = clamp(v + val_offset, 0.0, 1.0)
+
+    return hsv_to_rgb(h, s, v)
+    
+  return ImageFilter.Color3DLUT.generate(4, adjust_pixel_colour, 3).table
+
+def adjusted_colours(image: Image, base_colour, tint_colour):
+  print("base colour", base_colour)
+  print("tint colour", tint_colour)
+  lookup_table = generate_colour_map_lookup_table(base_colour, tint_colour)
+  return image.filter(ImageFilter.Color3DLUT(4, lookup_table))
+
+
+
 
 def increased_shadow(folder_image, factor):
+  """Returns a new image with a more intense shadow by increasing the opacity of pixels
+  with tranparency
+
+  Args:
+      folder_image (Image): Image to increase shadow on
+      factor (float): Scalar value to increase opacity by
+
+  Returns:
+      Image: New Image
+  """
   r, g, b, a = folder_image.split()
   a = a.point(lambda x: min(int(x * factor), 255))
+
   return Image.merge("RGBA", (r, g, b, a))
 
 def normalized_image(image: Image, steepness=0.15):

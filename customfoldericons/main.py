@@ -1,22 +1,25 @@
 from io import BytesIO
 import os
-from PySide6.QtCore import QPoint, QPropertyAnimation, Qt
-from PySide6.QtGui import QDragEnterEvent, QDragMoveEvent, QDropEvent, QFont, QMouseEvent, QPaintEvent, QPainter, QPixmap
-from PySide6.QtWidgets import QApplication, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QSlider, QVBoxLayout, QWidget
+from textwrap import fill
+from PySide6.QtCore import QPoint, QPropertyAnimation, QRect, Qt
+from PySide6.QtGui import QBrush, QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QFont, QMouseEvent, QPaintEvent, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import QApplication, QButtonGroup, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QSlider, QVBoxLayout, QWidget
 from PIL.ImageQt import ImageQt
 from PIL import Image
 import Cocoa
 
-from customfoldericons.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, FolderStyle, SFFont
-from customfoldericons.image_transformations import generate_folder_icon, generate_mask_from_image, generate_mask_from_text
+from customfoldericons.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, FolderStyle, SFFont, TintColour
+from customfoldericons.image_transformations import generate_colour_map_lookup_table, generate_folder_icon, generate_mask_from_image, generate_mask_from_text
 from customfoldericons.utilities import interpolate_int_to_float_with_midpoint, resource_path
 
 
 class CenterIcon(QLabel):
+  MINIMUM_SIZE = (400, 400)
+
   def __init__(self):
     super().__init__()
 
-    self.setMinimumSize(400,400)
+    self.setMinimumSize(*self.MINIMUM_SIZE)
     self.setAcceptDrops(True)
 
     # self.set_image(image)
@@ -37,6 +40,82 @@ class CenterIcon(QLabel):
     painter.drawPixmap(point, scaledPix)
     painter.end()
 
+class ColourRadioButton(QRadioButton):
+  BORDER_RADIUS = 5.0
+  ACTIVE_BORDER_WIDTH = 3.0
+  INACTIVE_BORDER_WIDTH = 2.0
+
+  INACTIVE_BORDER_COLOUR = (212, 212, 212)
+  ACTIVE_BORDER_COLOUR = (100, 198, 237)
+  
+  EMPTY_FILL_COLOUR = (255, 255, 255)
+
+  def __init__(self, colour=None, default=False, multicolour=False, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
+    self.colour = colour
+    self.is_default = default
+    self.is_multicolour = multicolour
+
+    self.setMinimumHeight(30)
+
+  def hitButton(self, point: QPoint) -> bool:
+    return self._get_center_rect().contains(point)
+
+  def paintEvent(self, _: QPaintEvent) -> None:
+    center_rect = self._get_center_rect()
+
+    border_width = self.ACTIVE_BORDER_WIDTH if self.isChecked() else self.INACTIVE_BORDER_WIDTH
+    border_colour = self.ACTIVE_BORDER_COLOUR if self.isChecked() else self.INACTIVE_BORDER_COLOUR
+
+    fill_colour = self.colour if self.colour is not None else self.EMPTY_FILL_COLOUR
+
+    painter = QPainter(self)
+    painter.setRenderHint(QPainter.Antialiasing)
+
+    outline_pen = QPen()
+    outline_pen.setWidth(border_width)
+    outline_pen.setColor(QColor.fromRgb(*border_colour))
+    
+    fill_brush = QBrush()
+    fill_brush.setColor(QColor.fromRgb(*fill_colour))
+    fill_brush.setStyle(Qt.SolidPattern)
+
+    painter.setPen(outline_pen)
+    painter.setBrush(fill_brush)
+
+    border_offset = border_width * 0.8
+    painter.drawRoundedRect(
+      center_rect.adjusted(border_offset, border_offset, -border_offset, -border_offset), 
+      self.BORDER_RADIUS - border_offset, self.BORDER_RADIUS - border_offset
+    )
+
+    if self.is_default:
+      dash_pen = QPen()
+      dash_pen.setColor(QColor.fromRgb(*self.INACTIVE_BORDER_COLOUR))
+      dash_pen.setCapStyle(Qt.RoundCap)
+      dash_pen.setWidth(3)
+      
+      painter.setPen(dash_pen)
+
+      start_point = center_rect.topLeft() + QPoint(8, 8)
+      end_point = center_rect.bottomRight() + QPoint(-8, -8)
+
+      painter.drawLine(start_point, end_point)
+    if self.is_multicolour:
+      ...
+
+    painter.end()
+
+  def _get_center_rect(self):
+    size = self.size()
+
+    width_adjustment = (size.width() - size.height()) / 2
+    total_rect = QRect(QPoint(0, 0), size)
+    
+    return total_rect.adjusted(width_adjustment, 0, -width_adjustment, 0)
+
+
 class NonEditableLine(QLineEdit):
   def __init__(self, placeholder_text):
     super().__init__()
@@ -55,7 +134,10 @@ class MainWindow(QMainWindow):
 
     self.image = None
 
+    # self.lookup_table = None
+
     self.image_mask = None
+    self.tint_colour = None  # None = none, otherwise tuple of rgb int
     self.image_text = ""
     self.output_folder = None
     self.output_location_directory = os.path.join(os.path.join(os.path.expanduser("~")), "Desktop")
@@ -66,6 +148,31 @@ class MainWindow(QMainWindow):
     self.center_image = CenterIcon()
     self.center_image.dragEnterEvent = self.unified_drag_enter
     self.center_image.dropEvent = self.unified_drop
+
+
+
+    self.colour_button_group = QButtonGroup()
+    colour_pallete_layout = QHBoxLayout()
+
+    colour_buttons = []
+
+    colour_buttons.append(ColourRadioButton(default=True))
+    for tint_colour in TintColour:
+      colour_buttons.append(ColourRadioButton(colour=tint_colour.value))
+    colour_buttons.append(ColourRadioButton(multicolour=True))
+
+    colour_buttons[-1].clicked.connect(self.choose_custom_colour)
+
+    for colour_button in colour_buttons:
+      colour_button.clicked.connect(self.select_colour)
+      self.colour_button_group.addButton(colour_button)
+      colour_pallete_layout.addWidget(colour_button)
+
+    colour_buttons[0].setChecked(True)
+
+
+
+
 
     self.scale_slider = QSlider(Qt.Horizontal)
     self.scale_slider.setMinimum(1)
@@ -130,6 +237,7 @@ class MainWindow(QMainWindow):
     main_layout = QVBoxLayout()
     main_layout.setSpacing(1)
     main_layout.addWidget(self.center_image)
+    main_layout.addLayout(colour_pallete_layout)
     main_layout.addLayout(scale_font_weight_layout)
     main_layout.addLayout(input_generate_layout)
     main_layout.addWidget(self.folder_replacement_field)
@@ -144,11 +252,24 @@ class MainWindow(QMainWindow):
     self.set_output_location_directory(self.output_location_directory)
     self.update_and_generate_image()
 
+  def select_colour(self):
+    print(self.sender().colour)
+    self.tint_colour = self.sender().colour
+    self.update_and_generate_image()
+
+  def choose_custom_colour(self):
+    print("TESTING")
+
   def update_and_generate_image(self):
+
+    # if self.lookup_table is None:
+    #   self.lookup_table = generate_colour_map_lookup_table(self.folder_style.base_colour(), (105,105,105))
+
     self.image = generate_folder_icon(
       self.folder_style,
       mask_image=self.image_mask,
       icon_scale=self.icon_scale,
+      tint_colour=self.tint_colour,
     )
     self.center_image.set_image(ImageQt(self.image))
 
