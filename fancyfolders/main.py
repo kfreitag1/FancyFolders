@@ -3,18 +3,18 @@ import os
 from random import randint
 from PySide6.QtCore import QPoint, QPropertyAnimation, QRect, Qt
 from PySide6.QtGui import QBrush, QColor, QConicalGradient, QDragEnterEvent, QDragMoveEvent, QDropEvent, QFont, QMouseEvent, QPaintEvent, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QApplication, QButtonGroup, QColorDialog, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QSizePolicy, QSlider, QSpacerItem, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QButtonGroup, QColorDialog, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QRadioButton, QSizePolicy, QSlider, QSpacerItem, QVBoxLayout, QWidget
 from PIL.ImageQt import ImageQt
 from PIL import Image
 import Cocoa
 
-from fancyfolders.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, FolderStyle, IconGenerationMethod, SFFont, TintColour
+from fancyfolders.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, PREVIEW_IMAGE_SIZE, FolderStyle, IconGenerationMethod, SFFont, TintColour
 from fancyfolders.image_transformations import generate_folder_icon
 from fancyfolders.utilities import interpolate_int_to_float_with_midpoint
 
 
 class CenterIcon(QLabel):
-  MINIMUM_SIZE = (400, 400)
+  MINIMUM_SIZE = (400, 340)
 
   def __init__(self):
     super().__init__()
@@ -23,10 +23,14 @@ class CenterIcon(QLabel):
     self.setMinimumSize(*self.MINIMUM_SIZE)
     self.setAcceptDrops(True)
 
-    # self.set_image(image)
+  def set_image(self, image, folder_style=FolderStyle.big_sur_light):  # takes pil image
+    crop_rect_percentages = folder_style.preview_crop_percentages()
+    crop_rect = QRect()
+    crop_rect.setCoords(*tuple(int(image.size[0] * percent) for percent in crop_rect_percentages))
+    
+    cropped_image = ImageQt(image).copy(crop_rect)
 
-  def set_image(self, image):
-    self.pixmap = QPixmap(image)
+    self.pixmap = QPixmap(cropped_image)
     self.update()
 
   def paintEvent(self, _: QPaintEvent) -> None:
@@ -167,7 +171,12 @@ class MainWindow(QMainWindow):
     # UI SETUP
     ##############################
 
-    title_label = QLabel("Low-Res Preview Image")
+    self.folder_style_dropdown = QComboBox()
+    self.folder_style_dropdown.addItems([style.display_name() for style in FolderStyle])
+    self.folder_style_dropdown.setCurrentIndex(self.folder_style.value)
+    self.folder_style_dropdown.currentIndexChanged.connect(self.select_folder_style)
+
+    title_label = QLabel("Folder Icon Preview")
     title_label.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
     title_label.setAlignment(Qt.AlignCenter)
     title_label.setStyleSheet("font-size: 20px; font-style: italic; font-family: Georgia, 'Times New Roman';")
@@ -239,7 +248,7 @@ class MainWindow(QMainWindow):
 
     self.icon_input_field = QLineEdit()
     self.icon_input_field.setMaxLength(100)
-    self.icon_input_field.setPlaceholderText("Drag symbol / image / type text")
+    self.icon_input_field.setPlaceholderText("Drag symbol/image above or type text")
     self.icon_input_field.setAlignment(Qt.AlignCenter)
     self.icon_input_field.setFont(QFont("SF Pro Rounded"))
     self.icon_input_field.textChanged.connect(self.icon_text_changed)
@@ -261,7 +270,7 @@ class MainWindow(QMainWindow):
     self.folder_replacement_field.dropEvent = self.unified_drop
 
 
-    folder_output_label = QLabel("OR make new folder in:")
+    folder_output_label = QLabel("Or make new folder in:")
     self.folder_output_path = NonEditableLine("")
     self.folder_output_path.setMinimumWidth(50)
     self.folder_output_picker_button = QPushButton("...")
@@ -276,8 +285,11 @@ class MainWindow(QMainWindow):
 
     main_layout = QVBoxLayout()
     main_layout.setSpacing(0)
+    main_layout.addWidget(self.folder_style_dropdown)
+    main_layout.addSpacerItem(QSpacerItem(0,15))
     main_layout.addWidget(title_label)
     main_layout.addWidget(self.center_image)
+    main_layout.addSpacerItem(QSpacerItem(0, 5))
     main_layout.addLayout(colour_pallete_layout)
     main_layout.addSpacerItem(QSpacerItem(0, 10))
     main_layout.addLayout(scale_font_weight_label_container)
@@ -320,9 +332,13 @@ class MainWindow(QMainWindow):
       image=self.icon_image
     )
 
+  def select_folder_style(self, index):
+    self.folder_style = FolderStyle(index)
+    self.update_preview_folder_image()
+
   def update_preview_folder_image(self):
-    image = self.generate_folder_image(size=350)
-    self.center_image.set_image(ImageQt(image))
+    image = self.generate_folder_image(size=PREVIEW_IMAGE_SIZE)
+    self.center_image.set_image(image)
 
   def generate_and_save_folder(self):
     # Only set folder icon to specific folder once
@@ -341,13 +357,17 @@ class MainWindow(QMainWindow):
           break
         index += 1
 
+    self.setCursor(Qt.WaitCursor)
+
     # Set folder icon to the highest resolution image
     high_resolution_image = self.generate_folder_image()
-    self.center_image.set_image(ImageQt(high_resolution_image))
-    # self.set_folder_icon(high_resolution_image, path)
+    self.center_image.set_image(high_resolution_image)
+    self.set_folder_icon(high_resolution_image, path)
+
+    self.unsetCursor()
 
     # DEV IMAGE SAVE
-    high_resolution_image.save(os.path.join(self.output_location_directory, "imageoutput-" + str(randint(1, 99999)) + ".png"))
+    # high_resolution_image.save(os.path.join(self.output_location_directory, "imageoutput-" + str(randint(1, 99999)) + ".png"))
 
   def open_output_location_directory(self):
     file_picker = QFileDialog(self)

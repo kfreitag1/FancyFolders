@@ -2,6 +2,8 @@ from enum import Enum
 
 ICON_SCALE_SLIDER_MAX = 31
 
+PREVIEW_IMAGE_SIZE = 350
+
 MAXIMUM_ICON_SCALE_VALUE = 1.5
 MINIMUM_ICON_SCALE_VALUE = 0.1
 
@@ -23,15 +25,22 @@ class IconGenerationMethod(Enum):
   TEXT = 2
 
 class FolderStyle(Enum):
-  big_sur_light = 1
-  big_sur_dark = 2
-  catalina = 3
+  big_sur_light = 0
+  big_sur_dark = 1
+  catalina = 2
 
   def filename(self):
     return {
       FolderStyle.big_sur_light: "big_sur_light.png",
       FolderStyle.big_sur_dark: "big_sur_dark.png",
       FolderStyle.catalina: "catalina.png"
+    }[self]
+
+  def display_name(self):
+    return {
+      FolderStyle.big_sur_light: "Big Sur - Light",
+      FolderStyle.big_sur_dark: "Big Sur - Dark",
+      FolderStyle.catalina: "Catalina",
     }[self]
 
   def size(self):
@@ -45,7 +54,14 @@ class FolderStyle(Enum):
     return {
       FolderStyle.big_sur_light: (0.086, 0.29, 0.914, 0.777),
       FolderStyle.big_sur_dark: (0.086, 0.29, 0.914, 0.777),
-      FolderStyle.catalina: (0.086, 0.29, 0.914, 0.777), # may need different ones
+      FolderStyle.catalina: (0.0668, 0.281, 0.9332, 0.770),
+    }[self]
+
+  def preview_crop_percentages(self):
+    return {
+      FolderStyle.big_sur_light: (0, 0.0888, 1.0, 0.9276),
+      FolderStyle.big_sur_dark: (0, 0.0888, 1.0, 0.9276),
+      FolderStyle.catalina: (0, 0.0972, 1.0, 0.896),
     }[self]
 
   def base_colour(self):
@@ -59,7 +75,7 @@ class FolderStyle(Enum):
     return {
       FolderStyle.big_sur_light: (63, 170, 229),
       FolderStyle.big_sur_dark: (53, 160, 225),
-      FolderStyle.catalina: (63, 170, 229),  # Not set properly
+      FolderStyle.catalina: (63, 170, 229),  # TODO set properly
     }[self]
 
 class TintColour(Enum):
