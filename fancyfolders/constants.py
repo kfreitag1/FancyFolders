@@ -1,23 +1,35 @@
 from enum import Enum
 
-ICON_SCALE_SLIDER_MAX = 31
+######################
+# CONSTANTS
+######################
+
+# UI
 
 PREVIEW_IMAGE_SIZE = 350
 
+ICON_SCALE_SLIDER_MAX = 31
 MAXIMUM_ICON_SCALE_VALUE = 1.5
 MINIMUM_ICON_SCALE_VALUE = 0.1
 
-FOLDER_SHADOW_INCREASE_FACTOR = 1.9
+# Icon Generation
 
+FOLDER_SHADOW_INCREASE_FACTOR = 1.9
 INNER_SHADOW_COLOUR_SCALING_FACTOR = 0.9
 
 INNER_SHADOW_BLUR = 3
-INNER_SHADOW_Y_OFFSET = 0.00293
-
+INNER_SHADOW_Y_OFFSET = 0.00293  # Percentage of height
 OUTER_HIGHLIGHT_BLUR = 6
-OUTER_HIGHLIGHT_Y_OFFSET = 0.00782
+OUTER_HIGHLIGHT_Y_OFFSET = 0.00782  # Percentage of height
 
 ICON_BOX_SCALING_FACTOR = 0.84
+
+BACKUP_FONTS = ["SFNS.ttf", "System San Francisco Text Medium.ttf"]
+
+
+######################
+# TYPES
+######################
 
 class IconGenerationMethod(Enum):
   NONE = 0
@@ -30,6 +42,7 @@ class FolderStyle(Enum):
   catalina = 2
 
   def filename(self):
+    """Filename of the icon in the assets folder"""
     return {
       FolderStyle.big_sur_light: "big_sur_light.png",
       FolderStyle.big_sur_dark: "big_sur_dark.png",
@@ -37,6 +50,7 @@ class FolderStyle(Enum):
     }[self]
 
   def display_name(self):
+    """Name to display to the user"""
     return {
       FolderStyle.big_sur_light: "Big Sur - Light",
       FolderStyle.big_sur_dark: "Big Sur - Dark",
@@ -44,6 +58,9 @@ class FolderStyle(Enum):
     }[self]
 
   def size(self):
+    """Size of the folder in pixels, 
+    1 dimension is specified because the image is a square
+    """
     return {
       FolderStyle.big_sur_light: 1024,
       FolderStyle.big_sur_dark: 1024,
@@ -51,6 +68,11 @@ class FolderStyle(Enum):
     }[self]
 
   def icon_box_percentages(self):
+    """Size of the rect in percentages which contains the region to draw the icon
+
+    Returns:
+        (float * 4): (x1, y1, x2, y2); Coordinate percentages
+    """
     return {
       FolderStyle.big_sur_light: (0.086, 0.29, 0.914, 0.777),
       FolderStyle.big_sur_dark: (0.086, 0.29, 0.914, 0.777),
@@ -58,6 +80,12 @@ class FolderStyle(Enum):
     }[self]
 
   def preview_crop_percentages(self):
+    """Minimum size of the rect in percentages which contains the 
+    folder for displaying in the preview image
+
+    Returns:
+        (float * 4): (x1, y1, x2, y2); Coordinate percentages
+    """
     return {
       FolderStyle.big_sur_light: (0, 0.0888, 1.0, 0.9276),
       FolderStyle.big_sur_dark: (0, 0.0888, 1.0, 0.9276),
@@ -65,6 +93,11 @@ class FolderStyle(Enum):
     }[self]
 
   def base_colour(self):
+    """The average colour of the folder where the icon is to be drawn
+
+    Returns:
+        (int * 3): (r, g, b); Colour
+    """
     return {
       FolderStyle.big_sur_light: (116, 208, 251),
       FolderStyle.big_sur_dark: (96, 208, 255),
@@ -72,6 +105,11 @@ class FolderStyle(Enum):
     }[self]
 
   def icon_colour(self):
+    """The average colour of the icon in default macOS folders
+
+    Returns:
+        (int * 3): (r, g, b); Colour
+    """
     return {
       FolderStyle.big_sur_light: (63, 170, 229),
       FolderStyle.big_sur_dark: (53, 160, 225),
@@ -79,6 +117,7 @@ class FolderStyle(Enum):
     }[self]
 
 class TintColour(Enum):
+  """Default colour palette for folder tints"""
   red = (255, 154, 162)
   melon = (255, 183, 178)
   orange = (255, 218, 193)
@@ -111,4 +150,4 @@ class SFFont(Enum):
       SFFont.black: "SF-Pro-Text-Black.otf",
     }[self]
 
-BACKUP_FONTS = ["SFNS.ttf", "System San Francisco Text Medium.ttf"]
+  # def backup_font_filename(self):

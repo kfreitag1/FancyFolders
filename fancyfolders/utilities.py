@@ -2,17 +2,9 @@ from colorsys import hsv_to_rgb, rgb_to_hsv
 import os
 import sys
 
-def resource_path(relative_path):
-    """ Get absolute path to internal resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
-
+#######################
 # COLOUR UTILITIES
+#######################
 
 def divided_colour(starting_colour, final_colour):
   colour_channels = zip(starting_colour, final_colour)
@@ -26,9 +18,13 @@ def hsv_to_rgb_int(hsv_colour):
   float_colours = hsv_to_rgb(*hsv_colour)
   return tuple([int(colour * 255) for colour in float_colours])
 
-# FONT UTILITIES
+#######################
+# FILESYSTEM UTILITIES
+#######################
 
 def get_first_font_installed(font_list):
+  """Returns the first font in the specified font list that is installed on the system"""
+
   possible_font_locations = [
     "/System/Library/Fonts/",
     "/Library/Fonts/",
@@ -38,9 +34,22 @@ def get_first_font_installed(font_list):
     for location in possible_font_locations:
       if font in os.listdir(location):
         return font
-  return "ERROR ERROR NO FONT"
+  raise FileNotFoundError()
 
+def resource_path(relative_path):
+  """ Get absolute path to internal app resource, works for dev and for PyInstaller """
+  
+  try:
+      # PyInstaller creates a temp folder and stores path in _MEIPASS
+      base_path = sys._MEIPASS
+  except Exception:
+      base_path = os.path.abspath(".")
+
+  return os.path.join(base_path, relative_path)
+
+#######################
 # MATH UTILITIES
+#######################
 
 def clamp(n, min_value, max_value):
   return min(max(n, min_value), max_value)

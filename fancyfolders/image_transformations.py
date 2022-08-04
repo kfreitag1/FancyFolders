@@ -6,9 +6,31 @@ from fancyfolders.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER
 from fancyfolders.utilities import clamp, divided_colour, get_first_font_installed, hsv_to_rgb_int, resource_path, rgb_int_to_hsv
 
 def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light, generation_method: IconGenerationMethod = IconGenerationMethod.NONE, preview_size = None, icon_scale = 1.0, tint_colour = None, text = None, font_style = SFFont.heavy, image = None):
+  """Generates a folder icon PIL image based on the specified generation method 
+  and other parameters. Can be generated from either text or an input image.
 
-  # TODO make shadows and highlights independant
-  # TODO make shadow and center color based on single final colour
+  Args:
+      folder_style (FolderStyle, optional): The base folder to use. 
+        Defaults to FolderStyle.big_sur_light.
+      generation_method (IconGenerationMethod, optional): The method to generate the folder icon. 
+        Defaults to IconGenerationMethod.NONE.
+      preview_size (int, optional): The size of the image to generate, useful for speeding up 
+        preview images. If None then uses the maximum size of the base folder image. 
+        Defaults to None.
+      icon_scale (float, optional): Scale of the icon within, or exceeding, 
+        the bounding region. Defaults to 1.0.
+      tint_colour ((int * 3), optional): (r, g, b); The colour to tint the whole folder icon. 
+        Defaults to None.
+      text (str, optional): The text to display on the folder if using the Text generation method. 
+        Defaults to None.
+      font_style (SFFont, optional): The specified font size to use for generating the  
+        text-based icon. Defaults to SFFont.heavy.
+      image (Image, optional): PIL Image to generate the icon if using the Image generation method. 
+        Defaults to None.
+
+  Returns:
+      Image: PIL Image of the resulting folder icon
+  """
 
   # Get base folder image
   folder_image = Image.open(resource_path("assets/" + folder_style.filename()))
@@ -82,12 +104,24 @@ def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light, 
   # Combine the two
   result = Image.alpha_composite(highlight_insert, shadow_insert)
 
+  # Apply tint colour if specified
   if tint_colour is None: 
     return result
   return adjusted_colours(result, folder_style.base_colour(), tint_colour)
 
 
 def _generate_mask_from_text(text, image_size, font_style = SFFont.heavy):
+  """Generates an image mask from the specified text and font parameters. To be used
+  in downstream icon generation.
+
+  Args:
+      text (str): Text to display
+      image_size (int): Size of the image in pixels
+      font_style (SFFont, optional): Font weight to use. Defaults to SFFont.heavy.
+
+  Returns:
+      Image : PIL Image (L) mask, white subject on black background
+  """
   font_filename = get_first_font_installed([font_style.filename()] + BACKUP_FONTS)
   font = ImageFont.truetype(font_filename, int(image_size/2))
 
@@ -99,6 +133,9 @@ def _generate_mask_from_text(text, image_size, font_style = SFFont.heavy):
     "font": font
   }
   
+  # Determine the exact size of the temporary image necessary to draw the complete
+  # text with the specified options, avoids an unnecessarily large buffer image
+
   temp_draw = ImageDraw.Draw(Image.new("L", (0,0)))
   text_bbox = temp_draw.textbbox((0, 0), **text_draw_options)
   text_size = (text_bbox[2] + abs(text_bbox[0]), text_bbox[3] + abs(text_bbox[1]))
@@ -112,14 +149,34 @@ def _generate_mask_from_text(text, image_size, font_style = SFFont.heavy):
 
 
 def _generate_mask_from_image(image: Image):
+  """Generates an image mask from the specified PIL image. To be used
+  in downstream icon generation.
+
+  Args:
+      image (Image): PIL image (RGB / RGBA) to display
+
+  Returns:
+      Image: PIL Image (L) mask, white subject on black background
+  """
   image = image.convert("L")
   image = _normalized_image(image)
   return ImageChops.invert(image)
 
 
-def generate_colour_map_lookup_table(starting_colour, final_colour):
-  start_hue, start_sat, start_val = rgb_int_to_hsv(starting_colour)
-  final_hue, final_sat, final_val = rgb_int_to_hsv(final_colour)
+def adjusted_colours(image: Image, base_colour, tint_colour):
+  """Changes the colours across the specified image by an ammount that would shift the
+  'base colour' to the 'tint colour.'
+
+  Args:
+      image (Image): PIL Image (RGB / RGBA)
+      base_colour (_type_): _description_
+      tint_colour (_type_): _description_
+
+  Returns:
+      _type_: _description_
+  """
+  start_hue, start_sat, start_val = rgb_int_to_hsv(base_colour)
+  final_hue, final_sat, final_val = rgb_int_to_hsv(tint_colour)
 
   hue_offset = final_hue - start_hue
   sat_factor = final_sat / start_sat
@@ -138,11 +195,7 @@ def generate_colour_map_lookup_table(starting_colour, final_colour):
 
     return hsv_to_rgb(h, s, v)
     
-  return ImageFilter.Color3DLUT.generate(4, adjust_pixel_colour, 3).table
-
-def adjusted_colours(image: Image, base_colour, tint_colour):
-  lookup_table = generate_colour_map_lookup_table(base_colour, tint_colour)
-  return image.filter(ImageFilter.Color3DLUT(4, lookup_table))
+  return image.filter(ImageFilter.Color3DLUT.generate(4, adjust_pixel_colour, 3))
 
 
 
@@ -163,17 +216,18 @@ def _increased_shadow(folder_image, factor):
 
   return Image.merge("RGBA", (r, g, b, a))
 
+
 def _normalized_image(image: Image, steepness=0.15):
   """Normalizes the pixel data from the grayscale image to 0 - 255 and applies a sigmoid function
   to bring values closer to the extremes (0 or 255).
 
   Args:
-      image (Image): PIL Image, grayscale (mode "L")
+      image (Image): PIL Image (L)
       steepness (float, optional): Intensity of sigmoid curve, smaller values lead to
         less separated colours. Defaults to 0.15.
 
   Returns:
-      Image: Normalized image
+      Image: PIL Image (L) that has been normalized
   """
   min_value, max_value = image.getextrema()
 
@@ -185,6 +239,7 @@ def _normalized_image(image: Image, steepness=0.15):
     return Image.eval(image, sigmoid_normalize)
   except:
     return image
+
 
 def _resize_image_in_box(image: Image, box):
   """Returns the image scaled into the bounding box with the same aspect ratio, 

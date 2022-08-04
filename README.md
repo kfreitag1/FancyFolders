@@ -14,9 +14,11 @@
 - Customize the icon scale, thickness, and colour
 - Save the icon!
 
+TODO put rotating gif of possible folders here
+
 ## Get started!
 
-<h3><a>:floppy_disk: Download latest Fancy Folders release</a></h3>
+<h3><a href="">:floppy_disk: Download latest Fancy Folders release</a></h3>
 
 <h3><a href="https://developer.apple.com/sf-symbols/">:floppy_disk: Download SF Symbols 3 or 4</a></h3>
 
@@ -31,13 +33,13 @@ TODO all the features and gifs
 
 ## Support me
 
-I'm providing this app for free for all to use because it is something I wish I always had. If you found it useful please consider helping me out so I can continue to work on my part-time passion projects!
+I'm providing this app for free because it's something I always wish I had. If you found it useful please consider helping me out so I can continue to work on projects such as this!
 
-<h3><a href="https://www.paypal.com/donate/?business=JQSGL5DGC93CU&no_recurring=1&item_name=Thank+you+for+supporting+me%21&currency_code=USD"></a>Donate 😁</h3>
+<h3><a href="https://www.paypal.com/donate/?business=JQSGL5DGC93CU&no_recurring=1&item_name=Thank+you+for+supporting+me%21&currency_code=USD">Donate 😁</a></h3>
 
 ## Licence
 
-Fancy Folders is realeased under the [GPL v3 Licence](https://www.gnu.org/licenses/gpl-3.0.en.html)
+Fancy Folders is released under the [GPL v3 Licence](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 ## Special thanks
 
