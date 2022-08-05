@@ -1,5 +1,5 @@
 from enum import Enum
-from PySide6.QtCore import QPoint, QRect, Qt
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, QSizeF, Qt
 from PySide6.QtGui import QBrush, QColor, QConicalGradient, QPaintEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QLabel, QLineEdit, QRadioButton, QSizePolicy, QSlider
 from PIL.ImageQt import ImageQt
@@ -41,7 +41,10 @@ class CenterFolderIcon(QLabel):
   def paintEvent(self, _: QPaintEvent) -> None:
     """Custom paint event to scale the image when the size of the widget changes.
     """
-    size = self.size()
+    dpi_ratio = self.devicePixelRatio()
+    self.pixmap.setDevicePixelRatio(dpi_ratio)
+
+    size = QSize(int(self.size().width() * dpi_ratio), int(self.size().height() * dpi_ratio))
     painter = QPainter(self)
     point = QPoint(0,0)
 
