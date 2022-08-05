@@ -158,9 +158,11 @@ def _generate_mask_from_image(image: Image):
   Returns:
       Image: PIL Image (L) mask, white subject on black background
   """
-  image = image.convert("L")
-  image = _normalized_image(image)
-  return ImageChops.invert(image)
+  white_background = Image.new("L", image.size, "white")
+  white_background.paste(image, mask=image)
+  white_background = _normalized_image(white_background)
+
+  return ImageChops.invert(white_background)
 
 
 def adjusted_colours(image: Image, base_colour, tint_colour):
@@ -217,14 +219,14 @@ def _increased_shadow(folder_image, factor):
   return Image.merge("RGBA", (r, g, b, a))
 
 
-def _normalized_image(image: Image, steepness=0.15):
+def _normalized_image(image: Image, steepness=0.12):
   """Normalizes the pixel data from the grayscale image to 0 - 255 and applies a sigmoid function
   to bring values closer to the extremes (0 or 255).
 
   Args:
       image (Image): PIL Image (L)
       steepness (float, optional): Intensity of sigmoid curve, smaller values lead to
-        less separated colours. Defaults to 0.15.
+        less separated colours. Defaults to 0.12.
 
   Returns:
       Image: PIL Image (L) that has been normalized
