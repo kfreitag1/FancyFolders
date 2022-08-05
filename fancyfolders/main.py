@@ -232,7 +232,16 @@ class MainWindow(QMainWindow):
     """Generates the preview image with reduced size to speed up the operation,
     and displays it in the UI.
     """
-    image = self.generate_folder_image(size=PREVIEW_IMAGE_SIZE)
+    # Default size is maximum resolution
+    preview_size = None
+
+    if self.icon_generation_method is IconGenerationMethod.TEXT:
+      if len(self.icon_text) > 1:
+        preview_size = PREVIEW_IMAGE_SIZE
+    elif self.icon_generation_method is IconGenerationMethod.IMAGE:
+      preview_size = PREVIEW_IMAGE_SIZE
+      
+    image = self.generate_folder_image(size=preview_size)
     self.center_image.set_image(image)
 
 
