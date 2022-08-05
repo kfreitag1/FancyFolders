@@ -5,7 +5,7 @@
     <img src="readme_assets/scaled_down_icon.png" alt="Logo" width="150" height="150">
   </a>
 
-  <h1 align="center">Fancy Folders</h1>
+  <h1>Fancy Folders</h1>
 </div>
 
 **Fancy Folders** is a macOS application for creating customized folder icons from SF symbols, text, or images.
@@ -14,7 +14,11 @@
 - Customize the icon scale, thickness, and colour
 - Save the icon!
 
-TODO put rotating gif of possible folders here
+<div align="center">
+
+![](readme_assets/white_background_smaller_carousel.gif)
+
+</div>
 
 ## Get started!
 
