@@ -170,7 +170,8 @@ def _generate_mask_from_image(image: Image):
       Image: PIL Image (L) mask, white subject on black background
   """
   white_background = Image.new("L", image.size, "white")
-  white_background.paste(image, mask=image)
+  mask = image if image.mode in ["RGBA", "RGBa"] else None
+  white_background.paste(image, mask)
   white_background = _normalized_image(white_background)
 
   return ImageChops.invert(white_background)
