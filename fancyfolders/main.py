@@ -240,9 +240,17 @@ class MainWindow(QMainWindow):
         preview_size = PREVIEW_IMAGE_SIZE
     elif self.icon_generation_method is IconGenerationMethod.IMAGE:
       preview_size = PREVIEW_IMAGE_SIZE
-      
+
+    # Operation may take a long time, set cursor to waiting
+    # TODO find a way to make a nicer cursor
+    self.setCursor(Qt.BusyCursor)
+
     image = self.generate_folder_image(size=preview_size)
     self.center_image.set_image(image)
+
+    # Operation is finished, set cursor to normal
+    self.unsetCursor()
+      
 
 
   def open_output_location_directory(self):
