@@ -49,8 +49,8 @@ class CenterFolderIcon(QLabel):
     point = QPoint(0,0)
 
     scaledPix = self.pixmap.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-    point.setX((size.width() - scaledPix.width())/2)
-    point.setY((size.height() - scaledPix.height())/2)
+    point.setX(int((size.width() - scaledPix.width())/(2 * dpi_ratio)))
+    point.setY(int((size.height() - scaledPix.height())/(2 * dpi_ratio)))
 
     painter.drawPixmap(point, scaledPix)
     painter.end()
