@@ -20,7 +20,7 @@
 
 </div>
 
-## Get started!
+## Get started
 
 <h3><a href="">:floppy_disk: Download latest Fancy Folders release</a></h3>
 
@@ -28,16 +28,30 @@
 
 ## Features
 
-TODO all the features and gifs
+<div align="center">
 
-- main gif of everything
-- symbols
-- images
-- folder colours
+![](readme_assets/demonstration.gif)
+
+</div>
+
+- Drag to set icon
+
+  - From the **SF Symbols** app _(recommended)_
+  - From an image (eg. from Google images)
+  - From an image file (eg .jpg or .png file)
+  - Type in text in the input field
+
+- Drag to set the output folder
+
+- Choose a folder tint colour from the list or select a custom colour
+
+- Click "Save Icon" to save the folder to the output folder, or to make a new folder with the icon in the chosen directory
 
 ## Support me
 
-I'm providing this app for free because it's something I always wish I had. If you found it useful please consider helping me out so I can continue to work on projects such as this!
+I'm providing this app for free because it's something I always wish I had. If you found it useful please consider helping me out so I can continue to work on these kinds of projects
+
+_Although I can't justify it now, I'll buy an Apple developer account to remove the "unidentified developer" warning using any donations I receive!_
 
 <h3><a href="https://www.paypal.com/donate/?business=JQSGL5DGC93CU&no_recurring=1&item_name=Thank+you+for+supporting+me%21&currency_code=USD">Donate 😁</a></h3>
 
