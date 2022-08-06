@@ -6,7 +6,7 @@ from enum import Enum
 
 # UI
 
-PREVIEW_IMAGE_SIZE = 400
+PREVIEW_IMAGE_SIZE = 300
 
 ICON_SCALE_SLIDER_MAX = 31
 MAXIMUM_ICON_SCALE_VALUE = 1.5
@@ -140,14 +140,12 @@ class SFFont(Enum):
 
   def filename(self):
     return {
-      SFFont.ultralight: "SF-Pro-Text-Ultralight.otf",
-      SFFont.thin: "SF-Pro-Text-Thin.otf",
-      SFFont.regular: "SF-Pro-Text-Regular.otf",
-      SFFont.medium: "SF-Pro-Text-Medium.otf",
-      SFFont.semibold: "SF-Pro-Text-Semibold.otf",
-      SFFont.bold: "SF-Pro-Text-Bold.otf",
-      SFFont.heavy: "SF-Pro-Text-Heavy.otf",
-      SFFont.black: "SF-Pro-Text-Black.otf",
+      SFFont.ultralight: "SF-Pro-Rounded-Ultralight.otf",
+      SFFont.thin: "SF-Pro-Rounded-Thin.otf",
+      SFFont.regular: "SF-Pro-Rounded-Regular.otf",
+      SFFont.medium: "SF-Pro-Rounded-Medium.otf",
+      SFFont.semibold: "SF-Pro-Rounded-Semibold.otf",
+      SFFont.bold: "SF-Pro-Rounded-Bold.otf",
+      SFFont.heavy: "SF-Pro-Rounded-Heavy.otf",
+      SFFont.black: "SF-Pro-Rounded-Black.otf",
     }[self]
-
-  # def backup_font_filename(self):

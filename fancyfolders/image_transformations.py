@@ -3,7 +3,7 @@ import math
 from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
 from fancyfolders.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR, INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET, OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont
 
-from fancyfolders.utilities import clamp, divided_colour, get_first_font_installed, hsv_to_rgb_int, resource_path, rgb_int_to_hsv
+from fancyfolders.utilities import clamp, divided_colour, get_font_location, get_first_font_installed, hsv_to_rgb_int, internal_resource_path, rgb_int_to_hsv
 
 def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light, generation_method: IconGenerationMethod = IconGenerationMethod.NONE, preview_size = None, icon_scale = 1.0, tint_colour = None, text = None, font_style = SFFont.heavy, image = None):
   """Generates a folder icon PIL image based on the specified generation method 
@@ -33,7 +33,7 @@ def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light, 
   """
 
   # Get base folder image
-  folder_image = Image.open(resource_path("assets/" + folder_style.filename()))
+  folder_image = Image.open(internal_resource_path("assets/" + folder_style.filename()))
 
   # Default size is the folder size, otherwise use the specified preview size
   if preview_size:
@@ -122,8 +122,11 @@ def _generate_mask_from_text(text, image_size, font_style = SFFont.heavy):
   Returns:
       Image : PIL Image (L) mask, white subject on black background
   """
-  font_filename = get_first_font_installed([font_style.filename()] + BACKUP_FONTS)
-  font = ImageFont.truetype(font_filename, int(image_size/2))
+  font_path = get_font_location(font_style.filename(), include_internal=False)
+  if font_path is None:
+    font_path = get_first_font_installed([font_style.filename()] + BACKUP_FONTS, include_internal=True)
+
+  font = ImageFont.truetype(font_path, int(image_size/2))
 
   text_draw_options = {
     "text": text,

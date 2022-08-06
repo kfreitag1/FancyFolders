@@ -1,6 +1,7 @@
 from colorsys import hsv_to_rgb, rgb_to_hsv
 import os
 import sys
+from xml.etree.ElementInclude import include
 
 #######################
 # COLOUR UTILITIES
@@ -22,21 +23,42 @@ def hsv_to_rgb_int(hsv_colour):
 # FILESYSTEM UTILITIES
 #######################
 
-def get_first_font_installed(font_list):
-  """Returns the first font in the specified font list that is installed on the system"""
+def get_font_location(font_pathname, include_internal=False):
+  """Returns the path of the font if it is installed on the system. If not,
+  returns None. May or may not include internal resources
 
+  Args:
+      font_pathname (str): Name of the font with .ttf or .otf
+      include_internal (bool, optional): Whether to check internal resources or not. 
+        Defaults to False.
+
+  Returns:
+      str / None: Path to the font, if found.
+  """
   possible_font_locations = [
     "/System/Library/Fonts/",
     "/Library/Fonts/",
     os.path.join(os.path.join(os.path.expanduser("~")), "Library/Fonts/")
   ]
-  for font in font_list:
-    for location in possible_font_locations:
-      if font in os.listdir(location):
-        return font
-  raise FileNotFoundError()
+  if include_internal:
+    possible_font_locations.insert(0, internal_resource_path("assets/fonts"))
 
-def resource_path(relative_path):
+  for location in possible_font_locations:
+    if font_pathname in os.listdir(location):
+      return os.path.join(location, font_pathname)
+  return None
+
+def get_first_font_installed(font_list, include_internal=True):
+  """Returns the first font in the specified font list that is installed on the system,
+  otherwise returns None
+  """
+  for font in font_list:
+    font_path = get_font_location(font, include_internal)
+    if font_path is not None:
+      return font_path
+  return None
+
+def internal_resource_path(relative_path):
   """ Get absolute path to internal app resource, works for dev and for PyInstaller """
   
   try:
