@@ -1,0 +1,15 @@
+{
+  "title": "Fancy Folders",
+  "icon-size": 110,
+  "window": {
+    "size": {
+      "width": 600,
+      "height": 500
+    }
+  },
+  "background": "dmg_instructions.png",
+  "contents": [
+    { "x": 487, "y": 270, "type": "link", "path": "/Applications" },
+    { "x": 113, "y": 270, "type": "file", "path": "../dist/Fancy Folders.app" }
+  ]
+}
