@@ -170,7 +170,8 @@ def _generate_mask_from_image(image: Image):
       Image: PIL Image (L) mask, white subject on black background
   """
   white_background = Image.new("L", image.size, "white")
-  white_background.paste(image, mask=image)
+  mask = image if image.mode in ["RGBA", "RGBa"] else None
+  white_background.paste(image, mask)
   white_background = _normalized_image(white_background)
 
   return ImageChops.invert(white_background)
@@ -243,6 +244,7 @@ def _normalized_image(image: Image, steepness=0.12):
       Image: PIL Image (L) that has been normalized
   """
   min_value, max_value = image.getextrema()
+  print("min", min_value, "max", max_value)
 
   def sigmoid_normalize(value):
     normalized_value = int((value-min_value)*255/(max_value-min_value))
