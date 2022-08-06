@@ -122,6 +122,14 @@ def _generate_mask_from_text(text, image_size, font_style = SFFont.heavy):
   Returns:
       Image : PIL Image (L) mask, white subject on black background
   """
+  # TODO add multiline support
+  # TODO add text aligning
+  # TODO add letter size independant mode (make lowercase letters not same height as uppercase)
+
+  # Dissallow really long text entries, greater than 25 characters
+  text = text[0:25]
+
+  # Get the font path, either installed or the local backup
   font_path = get_font_location(font_style.filename(), include_internal=False)
   if font_path is None:
     font_path = get_first_font_installed([font_style.filename()] + BACKUP_FONTS, include_internal=True)

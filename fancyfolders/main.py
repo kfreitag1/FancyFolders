@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
     # Text icon input
 
     self.icon_input_field = QLineEdit()
-    self.icon_input_field.setMaxLength(100)
+    self.icon_input_field.setMaxLength(20)
     self.icon_input_field.setPlaceholderText("Drag symbol/image above or type text")
     self.icon_input_field.setAlignment(Qt.AlignCenter)
     self.icon_input_field.setFont(QFont("SF Pro Rounded"))
