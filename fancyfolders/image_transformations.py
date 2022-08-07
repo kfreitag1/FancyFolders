@@ -244,7 +244,6 @@ def _normalized_image(image: Image, steepness=0.12):
       Image: PIL Image (L) that has been normalized
   """
   min_value, max_value = image.getextrema()
-  print("min", min_value, "max", max_value)
 
   def sigmoid_normalize(value):
     normalized_value = int((value-min_value)*255/(max_value-min_value))
