@@ -231,7 +231,7 @@ def _increased_shadow(folder_image, factor):
   return Image.merge("RGBA", (r, g, b, a))
 
 
-def _normalized_image(image: Image, steepness=0.12):
+def _normalized_image(image: Image, steepness=0.18):
   """Normalizes the pixel data from the grayscale image to 0 - 255 and applies a sigmoid function
   to bring values closer to the extremes (0 or 255).
 

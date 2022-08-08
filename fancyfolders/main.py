@@ -2,13 +2,14 @@ from io import BytesIO
 import logging
 import os
 from random import randint
+from unittest.mock import DEFAULT
 from PySide6.QtCore import  Qt
 from PySide6.QtGui import  QDragEnterEvent, QDropEvent, QFont, QMouseEvent
 from PySide6.QtWidgets import QApplication, QButtonGroup, QColorDialog, QComboBox, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QSizePolicy, QSpacerItem, QVBoxLayout, QWidget
 from PIL import Image
 import Cocoa
 
-from fancyfolders.constants import ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, PREVIEW_IMAGE_SIZE, FolderStyle, IconGenerationMethod, SFFont, TintColour
+from fancyfolders.constants import DEFAULT_FONT, ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, PREVIEW_IMAGE_SIZE, FolderStyle, IconGenerationMethod, SFFont, TintColour
 from fancyfolders.image_transformations import generate_folder_icon
 from fancyfolders.utilities import interpolate_int_to_float_with_midpoint
 from fancyfolders.widgets import CenterFolderIcon, ColourRadioButton, HorizontalSlider, NonEditableLine, TickStyle
@@ -27,7 +28,7 @@ class MainWindow(QMainWindow):
     self.icon_image = None
 
     self.icon_tint_colour = None  # None = none, otherwise tuple of rgb int
-    self.icon_font_style = SFFont.bold
+    self.icon_font_style = DEFAULT_FONT
     self.icon_scale = 1
 
     self.folder_style = FolderStyle.big_sur_light
@@ -115,6 +116,11 @@ class MainWindow(QMainWindow):
     scale_font_weight_layout.addWidget(self.scale_slider)
     scale_font_weight_layout.addWidget(self.font_weight_slider)
 
+    # Clear button
+
+    self.clear_button = QPushButton("Clear")
+    self.clear_button.clicked.connect(self.clear_icon)
+
     # Text icon input
 
     self.icon_input_field = QLineEdit()
@@ -133,9 +139,11 @@ class MainWindow(QMainWindow):
     self.generate_button = QPushButton("Save icon")
     self.generate_button.clicked.connect(self.generate_and_save_folder)
 
-    # Text input and save icon container
+    # Clear button, text input, and save icon container
 
     input_generate_layout = QHBoxLayout()
+    input_generate_layout.addWidget(self.clear_button)
+    input_generate_layout.addSpacing(8)
     input_generate_layout.addWidget(self.icon_input_field, 1)
     input_generate_layout.addSpacing(8)
     input_generate_layout.addWidget(self.generate_button)
@@ -251,6 +259,21 @@ class MainWindow(QMainWindow):
     # Operation is finished, set cursor to normal
     self.unsetCursor()
       
+  
+  def clear_icon(self):
+    """Clears the current icon
+    """
+    self.icon_generation_method = IconGenerationMethod.NONE
+    self.icon_image = None
+    self.icon_text = None
+    self.icon_scale = 1
+    self.icon_font_style = DEFAULT_FONT
+
+    self.icon_input_field.setText("")
+    self.scale_slider.setValue(int((ICON_SCALE_SLIDER_MAX - 1)/2) + 1)
+    self.font_weight_slider.setValue(self.icon_font_style.value)
+
+    self.update_preview_folder_image()
 
 
   def open_output_location_directory(self):

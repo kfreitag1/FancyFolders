@@ -5,4 +5,4 @@
 
 # Change to current directory
 cd "$(dirname "$0")"
-appdmg build.json ~/Desktop/Install\ Fancy\ Folders.dmg
+appdmg build.json ~/Desktop/Fancy\ Folders.dmg

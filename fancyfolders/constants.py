@@ -9,12 +9,12 @@ from enum import Enum
 PREVIEW_IMAGE_SIZE = 300
 
 ICON_SCALE_SLIDER_MAX = 31
-MAXIMUM_ICON_SCALE_VALUE = 1.5
+MAXIMUM_ICON_SCALE_VALUE = 2.0
 MINIMUM_ICON_SCALE_VALUE = 0.1
 
 # Icon Generation
 
-FOLDER_SHADOW_INCREASE_FACTOR = 1.9
+FOLDER_SHADOW_INCREASE_FACTOR = 1.7
 INNER_SHADOW_COLOUR_SCALING_FACTOR = 0.9
 
 INNER_SHADOW_BLUR = 3
@@ -23,8 +23,6 @@ OUTER_HIGHLIGHT_BLUR = 6
 OUTER_HIGHLIGHT_Y_OFFSET = 0.00782  # Percentage of height
 
 ICON_BOX_SCALING_FACTOR = 0.84
-
-BACKUP_FONTS = ["SFNS.ttf", "System San Francisco Text Medium.ttf"]
 
 
 ######################
@@ -149,3 +147,6 @@ class SFFont(Enum):
       SFFont.heavy: "SF-Pro-Rounded-Heavy.otf",
       SFFont.black: "SF-Pro-Rounded-Black.otf",
     }[self]
+
+DEFAULT_FONT = SFFont.bold
+BACKUP_FONTS = ["SFNS.ttf", "System San Francisco Text Medium.ttf"]
