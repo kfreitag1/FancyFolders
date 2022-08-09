@@ -48,13 +48,6 @@ class MainWindow(QMainWindow):
     self.folder_style_dropdown.setCurrentIndex(self.folder_style.value)
     self.folder_style_dropdown.currentIndexChanged.connect(self.select_folder_style)
 
-    # Icon preview label
-
-    title_label = QLabel("Folder Icon Preview")
-    title_label.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
-    title_label.setAlignment(Qt.AlignCenter)
-    title_label.setStyleSheet("font-size: 20px; font-style: italic; font-family: Georgia, 'Times New Roman';")
-
     # Folder icon + drag and drop area
 
     self.center_image = CenterFolderIcon()
@@ -178,8 +171,6 @@ class MainWindow(QMainWindow):
     main_layout = QVBoxLayout()
     main_layout.setSpacing(0)
     main_layout.addWidget(self.folder_style_dropdown)
-    main_layout.addSpacerItem(QSpacerItem(0,15))
-    main_layout.addWidget(title_label)
     main_layout.addWidget(self.center_image)
     main_layout.addSpacerItem(QSpacerItem(0, 5))
     main_layout.addLayout(colour_pallete_layout)
