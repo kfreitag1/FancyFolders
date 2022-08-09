@@ -1,10 +1,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="readme_assets/scaled_down_icon.png" alt="Logo" width="150" height="150">
-  </a>
-
+  <img src="readme_assets/scaled_down_icon.png" alt="Logo" width="150" height="150">
   <h1>Fancy Folders</h1>
 </div>
 
@@ -22,7 +19,7 @@
 
 ## Get started
 
-<h3><a href="">:floppy_disk: Download latest Fancy Folders release</a></h3>
+<h3><a href="https://github.com/kfreitag1/FancyFolders/releases/latest/download/FancyFolders.dmg">:floppy_disk: Download latest Fancy Folders release</a></h3>
 
 <h3><a href="https://developer.apple.com/sf-symbols/">:floppy_disk: Download SF Symbols 3 or 4</a></h3>
 
