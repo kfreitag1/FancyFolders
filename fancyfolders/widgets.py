@@ -1,10 +1,11 @@
 from enum import Enum
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, QSizeF, Qt
 from PySide6.QtGui import QBrush, QColor, QConicalGradient, QPaintEvent, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QLabel, QLineEdit, QRadioButton, QSizePolicy, QSlider
+from PySide6.QtWidgets import QDialog, QLabel, QLayout, QLineEdit, QRadioButton, QSizePolicy, QSlider, QVBoxLayout, QWidget
 from PIL.ImageQt import ImageQt
 
-from fancyfolders.constants import FolderStyle, TintColour
+from fancyfolders.constants import VERSION, FolderStyle, TintColour
+from fancyfolders.utilities import internal_resource_path
 
 
 class CenterFolderIcon(QLabel):
@@ -202,3 +203,30 @@ class HorizontalSlider(QSlider):
       self.setTickInterval(max_ticks + 1)
     elif tick_style is TickStyle.EACH:
       self.setTickInterval(1)
+
+class AboutPanel(QDialog):
+  def __init__(self):
+    super().__init__()
+
+    self.setWindowTitle("About Fancy Folders")
+
+    app_icon_image = QPixmap(internal_resource_path("assets/app_icon.png"))
+    dpi_ratio = self.devicePixelRatio()
+    app_icon_image.setDevicePixelRatio(dpi_ratio)
+
+    size = QSize(int(100 * dpi_ratio), int(100 * dpi_ratio))
+
+    self.icon = QLabel()
+    self.icon.setPixmap(app_icon_image.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+    self.icon.setMinimumWidth(200)
+    # self.icon.setScaledContents(True)
+
+    self.version_string = QLabel("Version " + VERSION)
+    self.version_string.setAlignment(Qt.AlignCenter)
+
+    layout = QVBoxLayout()
+    layout.setSizeConstraint(QLayout.SetFixedSize)
+    layout.addWidget(self.icon, alignment=Qt.AlignCenter)
+    layout.addWidget(self.version_string, alignment=Qt.AlignCenter)
+    self.setLayout(layout)
+

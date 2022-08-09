@@ -4,15 +4,15 @@ import os
 from random import randint
 from unittest.mock import DEFAULT
 from PySide6.QtCore import  Qt
-from PySide6.QtGui import  QDragEnterEvent, QDropEvent, QFont, QMouseEvent
-from PySide6.QtWidgets import QApplication, QButtonGroup, QColorDialog, QComboBox, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QPushButton, QSizePolicy, QSpacerItem, QVBoxLayout, QWidget
+from PySide6.QtGui import  QAction, QDragEnterEvent, QDropEvent, QFont, QMouseEvent
+from PySide6.QtWidgets import QApplication, QButtonGroup, QColorDialog, QComboBox, QFileDialog, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenuBar, QPushButton, QSizePolicy, QSpacerItem, QVBoxLayout, QWidget
 from PIL import Image
 import Cocoa
 
 from fancyfolders.constants import DEFAULT_FONT, ICON_SCALE_SLIDER_MAX, MAXIMUM_ICON_SCALE_VALUE, MINIMUM_ICON_SCALE_VALUE, PREVIEW_IMAGE_SIZE, FolderStyle, IconGenerationMethod, SFFont, TintColour
 from fancyfolders.image_transformations import generate_folder_icon
 from fancyfolders.utilities import interpolate_int_to_float_with_midpoint
-from fancyfolders.widgets import CenterFolderIcon, ColourRadioButton, HorizontalSlider, NonEditableLine, TickStyle
+from fancyfolders.widgets import AboutPanel, CenterFolderIcon, ColourRadioButton, HorizontalSlider, NonEditableLine, TickStyle
 
 
 class MainWindow(QMainWindow):
@@ -186,7 +186,6 @@ class MainWindow(QMainWindow):
     main_layout.addSpacerItem(QSpacerItem(0, 10))
     main_layout.addLayout(scale_font_weight_label_container)
     main_layout.addLayout(scale_font_weight_layout)
-    # main_layout.addSpacerItem(QSpacerItem(0, 15))
     main_layout.addLayout(input_generate_layout)
     main_layout.addSpacerItem(QSpacerItem(0, 15))
     main_layout.addWidget(self.folder_replacement_field)
@@ -199,11 +198,29 @@ class MainWindow(QMainWindow):
     main_widget.setLayout(main_layout)
     self.setCentralWidget(main_widget)
 
+    #####################
+    # Menu bar
+    #####################
+
+    self.menu_bar = QMenuBar()
+    self.setMenuBar(self.menu_bar)
+    self.menu = self.menu_bar.addMenu("About")
+
+    self.about_action = QAction("About", self)
+    self.about_action.triggered.connect(self.view_about_panel)
+    self.menu.addAction(self.about_action)
+
     # Other initializers
 
     main_widget.setFocus()
     self.set_output_location_directory(self.output_location_directory)
     self.update_preview_folder_image()
+
+
+  def view_about_panel(self):
+    """Opens the about panel"""
+    about_panel = AboutPanel()
+    about_panel.exec()
 
 
   def select_colour(self):
@@ -261,8 +278,7 @@ class MainWindow(QMainWindow):
       
   
   def clear_icon(self):
-    """Clears the current icon
-    """
+    """Clears the current icon"""
     self.icon_generation_method = IconGenerationMethod.NONE
     self.icon_image = None
     self.icon_text = None
