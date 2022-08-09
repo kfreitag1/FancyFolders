@@ -214,19 +214,23 @@ class AboutPanel(QDialog):
     dpi_ratio = self.devicePixelRatio()
     app_icon_image.setDevicePixelRatio(dpi_ratio)
 
-    size = QSize(int(100 * dpi_ratio), int(100 * dpi_ratio))
+    size = QSize(int(80 * dpi_ratio), int(80 * dpi_ratio))
 
     self.icon = QLabel()
     self.icon.setPixmap(app_icon_image.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-    self.icon.setMinimumWidth(200)
     # self.icon.setScaledContents(True)
 
     self.version_string = QLabel("Version " + VERSION)
     self.version_string.setAlignment(Qt.AlignCenter)
+    self.version_string.setMinimumWidth(200)
+
+    self.description = QLabel("Made by Kieran Freitag")
+    self.description.setStyleSheet("font-style: italic")
 
     layout = QVBoxLayout()
     layout.setSizeConstraint(QLayout.SetFixedSize)
     layout.addWidget(self.icon, alignment=Qt.AlignCenter)
     layout.addWidget(self.version_string, alignment=Qt.AlignCenter)
+    layout.addWidget(self.description, alignment=Qt.AlignCenter)
     self.setLayout(layout)
 
