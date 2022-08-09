@@ -48,7 +48,7 @@ coll = COLLECT(
 )
 app = BUNDLE(
     coll,
-    name='Fancy Folders.app',,
+    name='Fancy Folders.app',
     version='1.0',
     icon="assets/app_icon.icns",
     bundle_identifier=None,
