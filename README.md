@@ -44,14 +44,6 @@
 
 - Click "Save Icon" to save the folder to the output folder, or to make a new folder with the icon in the chosen directory
 
-## Support me
-
-I'm providing this app for free because it's something I always wish I had. If you found it useful please consider helping me out so I can continue to work on these kinds of projects
-
-_Although I can't justify it now, I'll buy an Apple developer account to remove the "unidentified developer" warning using any donations I receive!_
-
-<h3><a href="https://www.paypal.com/donate/?business=JQSGL5DGC93CU&no_recurring=1&item_name=Thank+you+for+supporting+me%21&currency_code=USD">Donate 😁</a></h3>
-
 ## Licence
 
 Fancy Folders is released under the [GPL v3 Licence](https://www.gnu.org/licenses/gpl-3.0.en.html)
