@@ -2,5 +2,5 @@
 .vscode
 build
 dist
-*/__pycache__/
+**/__pycache__/
 Icon*
