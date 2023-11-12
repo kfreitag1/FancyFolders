@@ -22,7 +22,7 @@ from fancyfolders.ui.components.composite.setlocationpanel import SetLocationPan
 from fancyfolders.ui.screens.aboutpanel import AboutPanel
 
 from fancyfolders.utilities import generateUniqueFolderName, set_folder_icon
-from fancyfolders.ui.components.centrefoldericon import CenterFolderIcon
+from fancyfolders.ui.components.centrefoldericon import CenterFolderIcon, CenterFolderIconContainer
 
 
 class FolderGeneratorWorker(QRunnable):
@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.folderStyleDropdown)
 
         # Folder icon + drag and drop area
-        self.centreImage = CenterFolderIcon()
+        self.centreImage = CenterFolderIconContainer()
         self.centreImage.dragEnterEvent = self.unified_drag_enter
         self.centreImage.dropEvent = self.unified_drop
         main_layout.addWidget(self.centreImage)

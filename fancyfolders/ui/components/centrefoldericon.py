@@ -1,31 +1,55 @@
+from typing import Optional
 from uuid import UUID
 from PySide6.QtCore import QPoint, QRect, QSize, Qt
-from PySide6.QtGui import QPaintEvent, QPainter, QPixmap
-from PySide6.QtWidgets import QLabel, QSizePolicy
+from PySide6.QtGui import QColor, QPaintEvent, QPainter, QPixmap
+from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QWidget
 from PIL.ImageQt import ImageQt
 from PIL.Image import Image
 
 from fancyfolders.constants import FolderStyle
+from fancyfolders.external.waitingspinnerwidget import QWaitingSpinner
 
 
-class CenterFolderIcon(QLabel):
-    """Displays the preview folder image and scales it when the size of the widget changes.
+class CenterFolderIconContainer(QWidget):
+    """Container to hold a folder icon and loading spinner.
     """
 
     MINIMUM_SIZE = (400, 240)
+    SPINNER_PADDING = 15
+    SPINNER_COLOUR = (109, 176, 126)
 
-    folderPixmap: Image = None
     receivingUUID: UUID = None
 
-    # TODO: override drag enter to render a dotted box around to accept drops
-    # TODO: add spinner when about to set folder icon
-
-    def __init__(self):
+    def __init__(self) -> None:
+        """Creates a new folder icon container with a new folder icon and spinner
+        """
         super().__init__()
 
+        # Ensure minimum size of the center folder icon
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumSize(*self.MINIMUM_SIZE)
         self.setAcceptDrops(True)
+
+        # Z-stack container to hold the folder icon and the spinner on different plances
+        self.container = QGridLayout()
+        self.container.setContentsMargins(0, 0, 0, 0)
+
+        # Spinner
+        spinnerContainer = QHBoxLayout()
+        spinnerContainer.setContentsMargins(
+            self.SPINNER_PADDING, self.SPINNER_PADDING, self.SPINNER_PADDING, self.SPINNER_PADDING)
+        self.spinner = QWaitingSpinner(
+            self, QColor.fromRgb(*self.SPINNER_COLOUR), 80.0,
+            0.0, 50.0, 1.5, 10, 6.0, 6.0, 10.0, False)
+        spinnerContainer.addWidget(self.spinner)
+        self.container.addLayout(
+            spinnerContainer, 0, 0, Qt.AlignBottom | Qt.AlignRight)
+
+        # Folder icon
+        self.folderIcon = CenterFolderIcon()
+        self.container.addWidget(self.folderIcon, 0, 0)
+
+        self.setLayout(self.container)
 
     def setReadyToReceive(self, uuid: UUID):
         """Sets the CenterFolderIcon ready to receive an asyncronously generated folder
@@ -36,8 +60,9 @@ class CenterFolderIcon(QLabel):
             uuid (UUID): Unique ID of latest folder icon generation task
         """
         self.receivingUUID = uuid
+        self.spinner.start()
         # DEBUG
-        # print("READY TO RECEIVE " + str(uuid))
+        print("READY TO RECEIVE " + str(uuid))
 
     def receiveImageData(self, uuid: UUID, image: Image, folderStyle: FolderStyle):
         """Callback from an asyncronous folder icon generation method with a given unique ID.
@@ -50,15 +75,28 @@ class CenterFolderIcon(QLabel):
             folderStyle (FolderStyle): Folder style of completed folder icon
         """
         if uuid == self.receivingUUID:
-            self._setFolderImage(image, folderStyle)
+            self.folderIcon.setFolderImage(image, folderStyle)
+            self.spinner.stop()
             # DEBUG
-            # print("ACCEPTING " + str(uuid))
+            print("ACCEPTING " + str(uuid))
         else:
             pass
             # DEBUG
-            # print("DENYING " + str(uuid))
+            print("DENYING " + str(uuid))
 
-    def _setFolderImage(self, image: Image, folderStyle=FolderStyle.big_sur_light):
+
+class CenterFolderIcon(QLabel):
+    """Displays the preview folder image and scales it when the size of the widget changes.
+    """
+
+    folderPixmap: Image = None
+
+    # TODO: override drag enter to render a dotted box around to accept drops
+
+    def __init__(self):
+        super().__init__()
+
+    def setFolderImage(self, image: Image, folderStyle=FolderStyle.big_sur_light):
         """Sets the image on the display.
 
         Args:
