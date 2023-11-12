@@ -1,6 +1,7 @@
 import os
 from typing import Callable, Optional
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import QButtonGroup, QFileDialog, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout
 from fancyfolders.ui.components.containerradiobutton import ContainerRadioButton
 from fancyfolders.ui.components.customlabel import CustomLabel
@@ -18,8 +19,9 @@ class SetLocationPanel(InstructionPanel):
         os.path.join(os.path.expanduser("~")), "Desktop")
 
     def __init__(self, update: Callable[[], None]):
-        super().__init__(
-            2, (72, 140, 161), "Set folder to change, or location to make new folder")
+        super().__init__(2, (72, 140, 161),
+                         "Set folder to change, or location to make new folder",
+                         extra_spacing=True)
 
         self.callback = update
 
@@ -28,32 +30,30 @@ class SetLocationPanel(InstructionPanel):
 
         # New folder output label, field, selector button
         self.newFolderLocation = NonEditableLine("")
-        self.newFolderLocation.setMinimumWidth(50)
-        self.filePickerButton = QPushButton("...")
-        self.filePickerButton.clicked.connect(self._openFilePicker)
+        self.newFolderLocation.setCursor(Qt.PointingHandCursor)
+        self.newFolderLocation.mousePressEvent = lambda _: self._openFilePicker()
 
         # Radio buttons
         self.radiobuttons = QButtonGroup(self)
 
-        radio1_layout = QHBoxLayout()
-        radio1_layout.addWidget(CustomLabel(
+        existingFolderLayout = QHBoxLayout()
+        existingFolderLayout.addWidget(CustomLabel(
             "Change existing folder:", is_bold=False))
-        radio1_layout.addWidget(self.existingFolderName)
-        self.radio1 = ContainerRadioButton(
-            radio1_layout, self.radiobuttons, self, update)
+        existingFolderLayout.addWidget(self.existingFolderName)
+        self.existingFolderRadio = ContainerRadioButton(
+            existingFolderLayout, self.radiobuttons, self, update)
 
-        radio2_layout = QHBoxLayout()
-        radio2_layout.setAlignment(Qt.AlignVCenter)
-        radio2_layout.addWidget(CustomLabel(
+        newLocationLayout = QHBoxLayout()
+        newLocationLayout.setAlignment(Qt.AlignVCenter)
+        newLocationLayout.addWidget(CustomLabel(
             "Make a new folder in:", is_bold=False))
-        radio2_layout.addWidget(self.newFolderLocation)
-        radio2_layout.addWidget(self.filePickerButton)
-        self.radio2 = ContainerRadioButton(
-            radio2_layout, self.radiobuttons, self, update, is_default=True)
+        newLocationLayout.addWidget(self.newFolderLocation)
+        self.newLocationRadio = ContainerRadioButton(
+            newLocationLayout, self.radiobuttons, self, update, is_default=True)
 
         container = QVBoxLayout()
-        container.addWidget(self.radio1)
-        container.addWidget(self.radio2)
+        container.addWidget(self.existingFolderRadio)
+        container.addWidget(self.newLocationRadio)
 
         self._updateUI()
 
@@ -76,7 +76,8 @@ class SetLocationPanel(InstructionPanel):
         """Updates the UI to reflect the data that was set
         """
         # Enable the existing folder filepath option if it is set
-        self.radio1.setEnabled(self.existingFolderFilepath is not None)
+        self.existingFolderRadio.setEnabled(
+            self.existingFolderFilepath is not None)
         if self.existingFolderFilepath is not None:
             print(os.path.basename(self.existingFolderFilepath))
             print(self.existingFolderFilepath)
@@ -96,7 +97,7 @@ class SetLocationPanel(InstructionPanel):
             filepath (Optional[str]): Filepath, or None to remove previous filepath
         """
         self.existingFolderFilepath = filepath
-        self.radio1.setChecked(filepath is not None)
+        self.existingFolderRadio.setChecked(filepath is not None)
         self._updateUI()
 
     def setNewFolderLocationFilepath(self, filepath: str):
@@ -107,7 +108,7 @@ class SetLocationPanel(InstructionPanel):
             filepath (str): Filepath
         """
         self.newLocationFilepath = filepath
-        self.radio2.setChecked(True)
+        self.newLocationRadio.setChecked(True)
         self._updateUI()
 
     def getOutputInfo(self) -> tuple[bool, str]:
@@ -120,9 +121,9 @@ class SetLocationPanel(InstructionPanel):
         Returns:
             tuple[bool, str]: (Is the filepath a new location?, Filepath)
         """
-        if self.radio1.isChecked():
+        if self.existingFolderRadio.isChecked():
             return (False, self.existingFolderFilepath)
-        elif self.radio2.isChecked():
+        elif self.newLocationRadio.isChecked():
             return (True, self.newLocationFilepath)
         else:
             raise ValueError("Invalid checked button")
