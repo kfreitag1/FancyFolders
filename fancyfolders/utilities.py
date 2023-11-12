@@ -9,17 +9,17 @@ import Cocoa
 #######################
 
 
-def divided_colour(starting_colour, final_colour):
+def dividedColour(starting_colour, final_colour):
     colour_channels = zip(starting_colour, final_colour)
     return tuple([clamp(int(((255 * final) / start)), 0, 255) for start, final in colour_channels])
 
 
-def rgb_int_to_hsv(rgb_colour):
+def rgbIntToHsv(rgb_colour):
     float_colours = [colour / 255 for colour in rgb_colour]
     return rgb_to_hsv(*float_colours)
 
 
-def hsv_to_rgb_int(hsv_colour):
+def hsvToRgbInt(hsv_colour):
     float_colours = hsv_to_rgb(*hsv_colour)
     return tuple([int(colour * 255) for colour in float_colours])
 
@@ -28,7 +28,7 @@ def hsv_to_rgb_int(hsv_colour):
 #######################
 
 
-def get_font_location(font_pathname, include_internal=False):
+def getFontLocation(font_pathname, includeInternal=False):
     """Returns the path of the font if it is installed on the system. If not,
     returns None. May or may not include internal resources
 
@@ -45,7 +45,7 @@ def get_font_location(font_pathname, include_internal=False):
         "/Library/Fonts/",
         os.path.join(os.path.join(os.path.expanduser("~")), "Library/Fonts/")
     ]
-    if include_internal:
+    if includeInternal:
         possible_font_locations.insert(
             0, internal_resource_path("assets/fonts"))
 
@@ -55,12 +55,12 @@ def get_font_location(font_pathname, include_internal=False):
     return None
 
 
-def get_first_font_installed(font_list, include_internal=True):
+def get_first_font_installed(font_list, includeinternal=True):
     """Returns the first font in the specified font list that is installed on the system,
     otherwise returns None
     """
     for font in font_list:
-        font_path = get_font_location(font, include_internal)
+        font_path = getFontLocation(font, includeinternal)
         if font_path is not None:
             return font_path
     return None

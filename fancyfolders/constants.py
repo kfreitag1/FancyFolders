@@ -37,6 +37,7 @@ class IconGenerationMethod(Enum):
     NONE = 0
     IMAGE = 1
     TEXT = 2
+    SYMBOL = 3
 
 
 class FolderStyle(Enum):
@@ -55,9 +56,9 @@ class FolderStyle(Enum):
     def display_name(self):
         """Name to display to the user"""
         return {
-            FolderStyle.big_sur_light: "Big Sur - Light",
-            FolderStyle.big_sur_dark: "Big Sur - Dark",
-            FolderStyle.catalina: "Catalina",
+            FolderStyle.big_sur_light: "macOS Big Sur - Light mode",
+            FolderStyle.big_sur_dark: "macOS Big Sur - Dark mode",
+            FolderStyle.catalina: "macOS Catalina",
         }[self]
 
     def size(self):
@@ -95,7 +96,7 @@ class FolderStyle(Enum):
             FolderStyle.catalina: (0, 0.0972, 1.0, 0.896),
         }[self]
 
-    def base_colour(self):
+    def baseColour(self):
         """The average colour of the folder where the icon is to be drawn
 
         Returns:

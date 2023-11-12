@@ -1,13 +1,17 @@
+from copy import deepcopy
 import logging
 import os
+import time
 from typing import Optional
-from PySide6.QtCore import Qt
+from uuid import UUID
+import uuid
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, Qt, Signal, Slot
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication, QLineEdit, QMainWindow, QMenuBar, QVBoxLayout, QWidget
-from PIL import Image
+from PIL.Image import Image
 
-from fancyfolders.constants import DEFAULT_FONT, ICON_SCALE_SLIDER_MAX, FolderStyle, IconGenerationMethod
-from fancyfolders.image_transformations import generate_folder_icon
+from fancyfolders.constants import DEFAULT_FONT, ICON_SCALE_SLIDER_MAX, FolderStyle, IconGenerationMethod, SFFont
+from fancyfolders.imagetransformations import generate_folder_icon
 from fancyfolders.ui.components.composite.colourpalette import ColourPalette
 from fancyfolders.ui.components.composite.folderstyledropdown import FolderStyleDropdown
 from fancyfolders.ui.components.composite.saveiconpanel import SaveIconPanel
@@ -19,6 +23,38 @@ from fancyfolders.ui.screens.aboutpanel import AboutPanel
 
 from fancyfolders.utilities import generateUniqueFolderName, set_folder_icon
 from fancyfolders.ui.components.centrefoldericon import CenterFolderIcon
+
+
+class FolderGeneratorWorker(QRunnable):
+    """Represents an asyncronous worker object that generates a new folder icon
+    """
+
+    def __init__(self, uuid: UUID, folderStyle: FolderStyle, **kwargs) -> None:
+        """Create a new folder generator worker with a unique ID, and the keyword
+        arguments needed for the folder generation method.
+
+        Args:
+            uuid (UUID): Unique ID for this worker
+            folderStyle (FolderStyle): FolderStyle of the folder to generate
+        """
+        super().__init__()
+        self.signals = self.FolderGeneratorSignals()
+        self.uuid = uuid
+        self.folderStyle = folderStyle
+        self.kwargs = kwargs
+
+    @Slot()
+    def run(self):
+        """Generates the folder icon and emits the resulting image
+        """
+        folderImage: Image = generate_folder_icon(
+            folderStyle=self.folderStyle, **self.kwargs)
+        self.signals.completed.emit(self.uuid, folderImage, self.folderStyle)
+
+    class FolderGeneratorSignals(QObject):
+        """Represents the completion signal for a FolderGeneratorWorker
+        """
+        completed = Signal(UUID, Image, FolderStyle)
 
 
 class MainWindow(QMainWindow):
@@ -114,7 +150,7 @@ class MainWindow(QMainWindow):
         iconScale = self.scaleThicknessSliders.getScale()
         iconThickness = self.scaleThicknessSliders.getThickness()
         iconText = self.setIconPanel.getIconText()
-        makeNewFolder, outputFilepath = self.setLocationPanel.getOutputInfo()
+        # makeNewFolder, outputFilepath = self.setLocationPanel.getOutputInfo() TODO
 
         # Check that there is text if in TEXT or SYMBOL mode, otherwise set to NONE mode
         if (self.generationMethod is IconGenerationMethod.TEXT and not iconText) or (
@@ -124,40 +160,25 @@ class MainWindow(QMainWindow):
         # Set text to be either the dragged symbol text or the typed text
         text = self.symbolText if self.generationMethod is IconGenerationMethod.SYMBOL else iconText
 
+        # Asynchronously generate new folder icon
         if generateFolder:
-            self.centreImage.set_image(
-                generate_folder_icon(folderStyle,
-                                     self.generationMethod,
-                                     None,  # TODO remove
-                                     iconScale,
-                                     tintColour,
-                                     text,
-                                     iconThickness,
-                                     self.iconImage)
-            )
+            # Keep track of unique ID for this task to only display latest one
+            folderGenerationTaskUUID = uuid.uuid4()
 
-    # def update_preview_folder_image(self):
-    #     """Generates the preview image with reduced size to speed up the operation,
-    #     and displays it in the UI.
-    #     """
-    #     # Default size is maximum resolution
-    #     preview_size = None
+            # Create new worker task to generate folder icon
+            # Ensure all parameters are immutable for thread safety
+            worker = FolderGeneratorWorker(
+                folderGenerationTaskUUID, folderStyle=folderStyle,
+                generationMethod=self.generationMethod, previewSize=None, iconScale=iconScale,
+                tintColour=tintColour, text=text, fontStyle=iconThickness,
+                image=deepcopy(self.iconImage))
 
-    #     if self.icon_generation_method is IconGenerationMethod.TEXT:
-    #         if len(self.icon_text) > 1:
-    #             preview_size = PREVIEW_IMAGE_SIZE
-    #     elif self.icon_generation_method is IconGenerationMethod.IMAGE:
-    #         preview_size = PREVIEW_IMAGE_SIZE
+            # Connect completion callback to the centreImage object, and set it to
+            # receive the result of this task using its unique ID
+            worker.signals.completed.connect(self.centreImage.receiveImageData)
+            self.centreImage.setReadyToReceive(folderGenerationTaskUUID)
 
-    #     # Operation may take a long time, set cursor to waiting
-    #     # TODO find a way to make a nicer cursor
-    #     self.setCursor(Qt.BusyCursor)
-
-    #     image = self.generate_folder_image(size=preview_size)
-    #     self.centreImage.set_image(image)
-
-    #     # Operation is finished, set cursor to normal
-    #     self.unsetCursor()
+            QThreadPool.globalInstance().start(worker)
 
     # def clear_icon(self):
     #     """Clears the current icon"""
