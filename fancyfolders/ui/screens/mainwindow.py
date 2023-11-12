@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
     the folder icon display.
     """
 
-    # Need to keep track of these variables, can't dynamically grab them like the others
+    # Need to keep track of these generation variables, can't dynamically grab them like the others
     generationMethod = IconGenerationMethod.NONE
     symbolText: str = ""
     iconImage: Image = None
@@ -70,12 +70,15 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # Common thread pool to run folder generation in
+        self.threadPool = QThreadPool(self)
+
         main_layout = QVBoxLayout()
         main_layout.setSpacing(5)
 
         # Dropdown to select folder style
         self.folderStyleDropdown = FolderStyleDropdown(
-            FolderStyle.big_sur_light, lambda: self.update(True))
+            FolderStyle.big_sur_light, lambda: self.update_(True))
         main_layout.addWidget(self.folderStyleDropdown)
 
         # Folder icon + drag and drop area
@@ -85,19 +88,19 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.centreImage)
 
         # Folder icon colour palette
-        self.colourPalette = ColourPalette(lambda: self.update(True))
+        self.colourPalette = ColourPalette(lambda: self.update_(True))
         main_layout.addLayout(self.colourPalette)
 
         # Icon scale and font weight slider container
         self.scaleThicknessSliders = ScaleThicknessSliders(
-            lambda: self.update(True))
+            lambda: self.update_(True))
         main_layout.addLayout(self.scaleThicknessSliders)
 
         # Main controls panels
         self.setIconPanel = SetIconTextPanel(
-            lambda: self.update(True, IconGenerationMethod.TEXT))
+            lambda: self.update_(True, IconGenerationMethod.TEXT))
         main_layout.addWidget(self.setIconPanel)
-        self.setLocationPanel = SetLocationPanel(self.update)
+        self.setLocationPanel = SetLocationPanel(self.update_)
         main_layout.addWidget(self.setLocationPanel)
         self.saveIconPanel = SaveIconPanel()
         main_layout.addWidget(self.saveIconPanel)
@@ -112,7 +115,7 @@ class MainWindow(QMainWindow):
         main_widget.setFocus()
 
         # Initialize local storage of values and update folder icon
-        self.update(True, IconGenerationMethod.NONE)
+        self.update_(True, IconGenerationMethod.NONE)
 
     def _init_menu_bar(self):
         """TODO
@@ -129,8 +132,8 @@ class MainWindow(QMainWindow):
         self.about_action.triggered.connect(_open_about_panel)
         self.menu.addAction(self.about_action)
 
-    def update(self, generateFolder: bool = False,
-               newGenerationMethod: Optional[IconGenerationMethod] = None):
+    def update_(self, generateFolder: bool = False,
+                newGenerationMethod: Optional[IconGenerationMethod] = None):
         """Called on any update of any one of the user input fields or data sources. Generates the
         folder icon based on the new data, if selected.
 
@@ -178,7 +181,8 @@ class MainWindow(QMainWindow):
             worker.signals.completed.connect(self.centreImage.receiveImageData)
             self.centreImage.setReadyToReceive(folderGenerationTaskUUID)
 
-            QThreadPool.globalInstance().start(worker)
+            # Start task
+            self.threadPool.start(worker)
 
     # def clear_icon(self):
     #     """Clears the current icon"""
@@ -214,7 +218,7 @@ class MainWindow(QMainWindow):
         # Dragged data is an image
         if data.hasFormat("application/x-qt-image"):
             self.iconImage = Image.fromqimage(data.imageData())
-            self.update(True, IconGenerationMethod.IMAGE)
+            self.update_(True, IconGenerationMethod.IMAGE)
             # self.update_preview_folder_image()
             event.accept()
 
@@ -236,7 +240,7 @@ class MainWindow(QMainWindow):
                 elif os.path.isfile(path):
                     try:
                         self.iconImage = Image.open(path)
-                        self.update(True, IconGenerationMethod.IMAGE)
+                        self.update_(True, IconGenerationMethod.IMAGE)
                         # self.update_preview_folder_image()
                         event.accept()
                     except:
@@ -246,7 +250,7 @@ class MainWindow(QMainWindow):
         # Dragged item includes text (SF Symbol)
         elif data.hasFormat("text/plain"):
             self.symbolText = data.text()
-            self.update(True, IconGenerationMethod.SYMBOL)
+            self.update_(True, IconGenerationMethod.SYMBOL)
             # self.update_preview_folder_image()
             event.accept()
 
