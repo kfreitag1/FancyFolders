@@ -54,15 +54,15 @@ def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light,
     # Generate mask image based on icon generation method
     mask_image = None
 
-    if generation_method == IconGenerationMethod.NONE:
+    if generation_method is IconGenerationMethod.NONE:
         if tint_colour is None:
             return folder_image
         return adjusted_colours(folder_image, folder_style.base_colour(), tint_colour)
 
-    elif generation_method == IconGenerationMethod.IMAGE:
+    elif generation_method is IconGenerationMethod.IMAGE:
         mask_image = _generate_mask_from_image(image)
 
-    elif generation_method == IconGenerationMethod.TEXT:
+    elif generation_method is IconGenerationMethod.TEXT or generation_method is IconGenerationMethod.SYMBOL:
         mask_image = _generate_mask_from_text(text, size, font_style)
 
     # Bounding box to place icon

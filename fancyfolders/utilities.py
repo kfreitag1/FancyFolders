@@ -1,7 +1,8 @@
 from colorsys import hsv_to_rgb, rgb_to_hsv
+from io import BytesIO
 import os
 import sys
-from xml.etree.ElementInclude import include
+import Cocoa
 
 #######################
 # COLOUR UTILITIES
@@ -75,6 +76,37 @@ def internal_resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
+
+
+def set_folder_icon(pil_image, path):
+    """Sets the icon of the file/directory at the specified path to the provided image
+    using the native macOS API, interfaced through PyObjC.
+
+    Args:
+        pil_image (Image): PIL Image to set the icon to
+        path (str): Absolute path to the file/directory
+    """
+
+    # Need to first save the image data to a bytes buffer in PNG format
+    # for the PyObjC API method
+    buffered = BytesIO()
+    pil_image.save(buffered, format="PNG")
+
+    ns_image = Cocoa.NSImage.alloc().initWithData_(buffered.getvalue())
+    Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(ns_image, path, 0)
+
+
+def generateUniqueFolderName(directory: str):
+    index = 1
+    while True:
+        new_folder_name = "untitled folder" + \
+            ("" if index == 1 else " {}".format(index))
+        path = os.path.join(directory, new_folder_name)
+
+        if not os.path.exists(path):
+            os.mkdir(path)
+            break
+        index += 1
 
 #######################
 # MATH UTILITIES

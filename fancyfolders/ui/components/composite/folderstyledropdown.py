@@ -5,17 +5,20 @@ from fancyfolders.constants import FolderStyle
 
 
 class FolderStyleDropdown(QComboBox):
-    def __init__(self, default_style: FolderStyle, on_change: Callable[[int], None]) -> None:
+    """Represents a dropdown to select one of the folder styles (macOS versions)
+    """
+
+    def __init__(self, defaultStyle: FolderStyle, onChange: Callable[[], None]) -> None:
         super().__init__()
 
         # All possible folder styles
         self.addItems([style.display_name() for style in FolderStyle])
 
         # Set default
-        self.setCurrentIndex(default_style.value)
+        self.setCurrentIndex(defaultStyle.value)
 
-        # Setup callback on new selection
-        self.currentIndexChanged.connect(on_change)
+        # Setup callback on change
+        self.currentIndexChanged.connect(lambda _: onChange())
 
     def getFolderStyle(self) -> FolderStyle:
-        return self.currentIndex()
+        return FolderStyle(self.currentIndex())
