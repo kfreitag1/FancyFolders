@@ -1,11 +1,14 @@
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QDialog, QLabel, QLayout, QVBoxLayout
+
 from fancyfolders.constants import VERSION
 from fancyfolders.utilities import internal_resource_path
 
 
 class AboutPanel(QDialog):
+    """Represents an 'about panel' for the Fancy Folders application"""
+
     def __init__(self):
         super().__init__()
 

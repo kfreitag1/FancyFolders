@@ -1,28 +1,26 @@
 from typing import Optional
 from uuid import UUID
+
+from PIL.Image import Image
+from PIL.ImageQt import ImageQt
 from PySide6.QtCore import QPoint, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QPaintEvent, QPainter, QPixmap
 from PySide6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QWidget
-from PIL.ImageQt import ImageQt
-from PIL.Image import Image
 
 from fancyfolders.constants import FolderStyle
 from fancyfolders.external.waitingspinnerwidget import QWaitingSpinner
 
 
-class CenterFolderIconContainer(QWidget):
-    """Container to hold a folder icon and loading spinner.
-    """
+class CentreFolderIconContainer(QWidget):
+    """Container to hold a folder icon and loading spinner."""
 
     MINIMUM_SIZE = (400, 240)
     SPINNER_PADDING = 15
-    SPINNER_COLOUR = (109, 176, 126)
+    SPINNER_COLOUR = (200, 200, 200)
 
     receiving_uuid: UUID = None
 
     def __init__(self) -> None:
-        """Creates a new folder icon container with a new folder icon and spinner
-        """
         super().__init__()
 
         # Ensure minimum size of the center folder icon
@@ -45,22 +43,21 @@ class CenterFolderIconContainer(QWidget):
             10, 6.0, 6.0, 10.0,
             False)
         spinner_container.addWidget(self.spinner)
-        self.container.addLayout(
-            spinner_container, 0, 0, Qt.AlignBottom | Qt.AlignRight)
+        self.container.addLayout(spinner_container, 0, 0, Qt.AlignBottom | Qt.AlignRight)
+        # TODO: fix spinner behind folder icon
 
         # Folder icon
-        self.folderIcon = CenterFolderIcon()
-        self.container.addWidget(self.folderIcon, 0, 0)
+        self.folder_icon = CentreFolderIcon()
+        self.container.addWidget(self.folder_icon, 0, 0)
 
         self.setLayout(self.container)
 
-    def setReadyToReceive(self, uuid: UUID):
+    def set_ready_to_receive(self, uuid: UUID) -> None:
         """Sets the CenterFolderIcon ready to receive an asynchronously
         generated folder icon with the given unique ID. Once set, will disregard
-        the image data received from any previous tasks.
+        the image data received from any previous tasks
 
-        Args:
-            uuid (UUID): Unique ID of latest folder icon generation task
+        :param uuid: Unique ID of latest folder icon generation task
         """
         self.receiving_uuid = uuid
         self.spinner.start()
@@ -68,18 +65,17 @@ class CenterFolderIconContainer(QWidget):
         # print("READY TO RECEIVE " + str(uuid))
 
     def receive_image_data(self, uuid: UUID, image: Image,
-                           folder_style: FolderStyle):
+                           folder_style: FolderStyle) -> None:
         """Callback from an asynchronous folder icon generation method with a
         given unique ID. If the ID matches the currently accepting one, accepts
         the image data and outputs it to the screen.
 
-        Args:
-            uuid (UUID): Unique ID of completed task
-            image (Image): Folder icon image
-            folder_style (FolderStyle): Folder style of completed folder icon
+        :param uuid: Unique ID of completed task
+        :param image: Folder icon image
+        :param folder_style: Folder style of completed folder icon
         """
         if uuid == self.receiving_uuid:
-            self.folderIcon.set_folder_image(image, folder_style)
+            self.folder_icon.set_folder_image(image, folder_style)
             self.spinner.stop()
             # DEBUG
             # print("ACCEPTING " + str(uuid))
@@ -89,10 +85,8 @@ class CenterFolderIconContainer(QWidget):
             # print("DENYING " + str(uuid))
 
 
-class CenterFolderIcon(QLabel):
-    """Displays the preview folder image and scales it when the size of the
-    widget changes.
-    """
+class CentreFolderIcon(QLabel):
+    """Displays the scaled preview folder image"""
 
     folder_pixmap: Optional[QPixmap] = None
 
@@ -101,15 +95,14 @@ class CenterFolderIcon(QLabel):
     def __init__(self):
         super().__init__()
 
-    def set_folder_image(self, image: Image, folder_style=FolderStyle.big_sur_light):
-        """Sets the image on the display.
+    def set_folder_image(self, image: Image,
+                         folder_style=FolderStyle.big_sur_light) -> None:
+        """Sets the image on the display
 
-        Args:
-            image (Image): PIL Image to display
-            folder_style (FolderStyle): The folder style of the image to set in order to
-              crop away any extra space. Defaults to FolderStyle.big_sur_light.
+        :param image: PIL Image to display
+        :param folder_style: The folder style of the image to set in order to
+            crop away any extra space
         """
-
         crop_rect_percentages = folder_style.preview_crop_percentages()
         crop_rect = QRect()
         crop_rect.setCoords(
@@ -122,9 +115,9 @@ class CenterFolderIcon(QLabel):
         self.update()
 
     def paintEvent(self, _: QPaintEvent) -> None:
-        """Custom paint event to scale the image when the size of the widget changes.
+        """Custom paint event to scale the image when the size of the
+        widget changes.
         """
-
         if self.folder_pixmap is None:
             return
 
@@ -138,8 +131,8 @@ class CenterFolderIcon(QLabel):
 
         scaled_pix = self.folder_pixmap.scaled(
             size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        point.setX(int((size.width() - scaled_pix.width())/(2 * dpi_ratio)))
-        point.setY(int((size.height() - scaled_pix.height())/(2 * dpi_ratio)))
+        point.setX(int((size.width() - scaled_pix.width()) / (2 * dpi_ratio)))
+        point.setY(int((size.height() - scaled_pix.height()) / (2 * dpi_ratio)))
 
         painter.drawPixmap(point, scaled_pix)
         painter.end()

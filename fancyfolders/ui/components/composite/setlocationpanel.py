@@ -1,8 +1,9 @@
 import os
 from typing import Callable, Optional
+
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QCursor
-from PySide6.QtWidgets import QButtonGroup, QFileDialog, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QButtonGroup, QFileDialog, QHBoxLayout, QVBoxLayout
+
 from fancyfolders.ui.components.containerradiobutton import ContainerRadioButton
 from fancyfolders.ui.components.customlabel import CustomLabel
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
@@ -10,120 +11,121 @@ from fancyfolders.ui.components.noneditableline import NonEditableLine
 
 
 class SetLocationPanel(InstructionPanel):
-    """Represents the 2nd instruction panel, containing fields to gather user input relating
-    to where the folder will be generated
+    """Represents the 2nd instruction panel, containing fields to gather user
+    input relating to where the folder will be generated
     """
 
-    existingFolderFilepath = None
-    newLocationFilepath = os.path.join(
+    existing_folder_filepath = None
+    new_location_filepath = os.path.join(
         os.path.join(os.path.expanduser("~")), "Desktop")
 
-    def __init__(self, update: Callable[[], None]):
+    def __init__(self, on_change: Callable[[], None]):
+        """Constructs a new location instruction panel
+
+        :param on_change: Callback to run whenever the location is updated
+        """
         super().__init__(2, (72, 140, 161),
                          "Set folder to change, or location to make new folder",
                          extra_spacing=True)
 
-        self.callback = update
+        self.on_change = on_change
 
         # Folder to change field
-        self.existingFolderName = NonEditableLine("Drag folder above")
+        self.existing_folder_name_field = NonEditableLine("Drag folder above")
 
         # New folder output label, field, selector button
-        self.newFolderLocation = NonEditableLine("")
-        self.newFolderLocation.setCursor(Qt.PointingHandCursor)
-        self.newFolderLocation.mousePressEvent = lambda _: self._openFilePicker()
+        self.new_folder_location = NonEditableLine("")
+        self.new_folder_location.setCursor(Qt.PointingHandCursor)
+        self.new_folder_location.mousePressEvent = lambda _: self._open_file_picker()
 
-        # Radio buttons
-        self.radiobuttons = QButtonGroup(self)
+        self.radio_buttons = QButtonGroup(self)
 
-        existingFolderLayout = QHBoxLayout()
-        existingFolderLayout.addWidget(CustomLabel(
+        existing_folder_layout = QHBoxLayout()
+        existing_folder_layout.addWidget(CustomLabel(
             "Change existing folder:", is_bold=False))
-        existingFolderLayout.addWidget(self.existingFolderName)
-        self.existingFolderRadio = ContainerRadioButton(
-            existingFolderLayout, self.radiobuttons, self, update)
+        existing_folder_layout.addWidget(self.existing_folder_name_field)
+        self.existing_folder_radio = ContainerRadioButton(
+            existing_folder_layout, self.radio_buttons, self, on_change)
 
-        newLocationLayout = QHBoxLayout()
-        newLocationLayout.setAlignment(Qt.AlignVCenter)
-        newLocationLayout.addWidget(CustomLabel(
+        new_location_layout = QHBoxLayout()
+        new_location_layout.setAlignment(Qt.AlignVCenter)
+        new_location_layout.addWidget(CustomLabel(
             "Make a new folder in:", is_bold=False))
-        newLocationLayout.addWidget(self.newFolderLocation)
-        self.newLocationRadio = ContainerRadioButton(
-            newLocationLayout, self.radiobuttons, self, update, is_default=True)
+        new_location_layout.addWidget(self.new_folder_location)
+        self.new_location_radio = ContainerRadioButton(
+            new_location_layout, self.radio_buttons, self, on_change, is_default=True)
 
         container = QVBoxLayout()
-        container.addWidget(self.existingFolderRadio)
-        container.addWidget(self.newLocationRadio)
+        container.addWidget(self.existing_folder_radio)
+        container.addWidget(self.new_location_radio)
 
-        self._updateUI()
+        self._update_ui()
 
         # Add main container to instruction panel
         self.addLayout(container)
 
-    def _openFilePicker(self):
+    def _open_file_picker(self):
         """Opens a file picker window to select an output directory for new folders."""
-        filePickerDialog = QFileDialog(self)
-        filePickerDialog.setFileMode(QFileDialog.Directory)
-        filePickerDialog.setAcceptMode(QFileDialog.AcceptOpen)
+        file_picker_dialog = QFileDialog(self)
+        file_picker_dialog.setFileMode(QFileDialog.Directory)
+        file_picker_dialog.setAcceptMode(QFileDialog.AcceptOpen)
 
-        if filePickerDialog.exec():
-            path = filePickerDialog.selectedFiles()[0]
-            self.setNewFolderLocationFilepath(path)
+        if file_picker_dialog.exec():
+            path = file_picker_dialog.selectedFiles()[0]
+            self.set_new_folder_location_filepath(path)
 
-        self.callback()
+        self.on_change()
 
-    def _updateUI(self):
+    def _update_ui(self):
         """Updates the UI to reflect the data that was set
         """
         # Enable the existing folder filepath option if it is set
-        self.existingFolderRadio.setEnabled(
-            self.existingFolderFilepath is not None)
-        if self.existingFolderFilepath is not None:
-            print(os.path.basename(self.existingFolderFilepath))
-            print(self.existingFolderFilepath)
+        self.existing_folder_radio.setEnabled(
+            self.existing_folder_filepath is not None)
+        if self.existing_folder_filepath is not None:
+            print(os.path.basename(self.existing_folder_filepath))
+            print(self.existing_folder_filepath)
 
         # Update the folder names in the fields based on the stored filepaths
-        self.existingFolderName.setText(
-            None if self.existingFolderFilepath is None else
-            os.path.basename(self.existingFolderFilepath))
-        self.newFolderLocation.setText(
-            os.path.basename(self.newLocationFilepath))
+        self.existing_folder_name_field.setText(
+            None if self.existing_folder_filepath is None else
+            os.path.basename(self.existing_folder_filepath))
+        self.new_folder_location.setText(
+            os.path.basename(self.new_location_filepath))
 
-    def setExistingFolderFilepath(self, filepath: Optional[str]):
+    def set_existing_folder_filepath(self, filepath: Optional[str]) -> None:
         """Sets the filepath to an existing folder that the user wishes
-        to have the icon set.
+        to have the icon set
 
-        Args:
-            filepath (Optional[str]): Filepath, or None to remove previous filepath
+        :param filepath: Filepath, or None to remove previous filepath
         """
-        self.existingFolderFilepath = filepath
-        self.existingFolderRadio.setChecked(filepath is not None)
-        self._updateUI()
+        self.existing_folder_filepath = filepath
+        self.existing_folder_radio.setChecked(filepath is not None)
+        self._update_ui()
 
-    def setNewFolderLocationFilepath(self, filepath: str):
+    def set_new_folder_location_filepath(self, filepath: str) -> None:
         """Sets the filepath to the location in which the new folder
-        will be generated in.
+        will be generated in
 
-        Args:
-            filepath (str): Filepath
+        :param filepath: Filepath
+        :return:
         """
-        self.newLocationFilepath = filepath
-        self.newLocationRadio.setChecked(True)
-        self._updateUI()
+        self.new_location_filepath = filepath
+        self.new_location_radio.setChecked(True)
+        self._update_ui()
 
-    def getOutputInfo(self) -> tuple[bool, str]:
-        """Returns a filepath and whether the filepath represents an existing folder
-        or a location to generate a new folder. True corresponds to a new location.
+    def get_output_info(self) -> tuple[bool, str]:
+        """Returns a filepath and whether the filepath represents an existing
+        folder or a location to generate a new folder. True corresponds to a
+        new location
 
-        Raises:
-            ValueError: Thrown if the checked button was not one of the two radio buttons
-
-        Returns:
-            tuple[bool, str]: (Is the filepath a new location?, Filepath)
+        :return: Is the filepath a new location?, Filepath
+        :raises ValueError: Thrown if the checked button was not one of the
+            two radio buttons
         """
-        if self.existingFolderRadio.isChecked():
-            return (False, self.existingFolderFilepath)
-        elif self.newLocationRadio.isChecked():
-            return (True, self.newLocationFilepath)
+        if self.existing_folder_radio.isChecked():
+            return False, self.existing_folder_filepath
+        elif self.new_location_radio.isChecked():
+            return True, self.new_location_filepath
         else:
             raise ValueError("Invalid checked button")

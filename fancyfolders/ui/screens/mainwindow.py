@@ -1,76 +1,76 @@
-from copy import deepcopy
 import logging
 import os
-from typing import Optional
 import uuid
-from PySide6.QtCore import QThreadPool, Signal
-from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QMouseEvent
-from PySide6.QtWidgets import QApplication, QLineEdit, QMainWindow, QMenuBar, QVBoxLayout, QWidget
+from copy import deepcopy
+from typing import Optional
+
 from PIL.Image import Image
+from PySide6.QtCore import QThreadPool, Signal
+from PySide6.QtGui import QAction, QDropEvent, QMouseEvent
+from PySide6.QtWidgets import QApplication, QLineEdit, QMainWindow, QMenuBar, QVBoxLayout, QWidget
 
 from fancyfolders.constants import FolderStyle, IconGenerationMethod
 from fancyfolders.threadsafefoldergeneration import FolderGeneratorWorker
+from fancyfolders.ui.components.centrefoldericon import CentreFolderIconContainer
 from fancyfolders.ui.components.composite.colourpalette import ColourPalette
 from fancyfolders.ui.components.composite.folderstyledropdown import FolderStyleDropdown
 from fancyfolders.ui.components.composite.saveiconpanel import SaveIconPanel
 from fancyfolders.ui.components.composite.scalethicknesssliders import ScaleThicknessSliders
 from fancyfolders.ui.components.composite.seticontextpanel import SetIconTextPanel
 from fancyfolders.ui.components.composite.setlocationpanel import SetLocationPanel
-
 from fancyfolders.ui.screens.aboutpanel import AboutPanel
-
-from fancyfolders.ui.components.centrefoldericon import CenterFolderIconContainer
 
 
 class MainWindow(QMainWindow):
-    """Represents the main window of the application, containing all user input fields and
-    the folder icon display.
+    """Represents the main window of the application, containing all user
+    input fields and the folder icon display.
     """
 
-    # Need to keep track of these generation variables, can't dynamically grab them like the others
-    generationMethod = IconGenerationMethod.NONE
-    symbolText: str = ""
-    iconImage: Image = None
+    # Need to keep track of these folder icon generation variables,
+    # can't dynamically grab them like the others
+    generation_method = IconGenerationMethod.NONE
+    symbol_text: str = ""
+    icon_image: Image = None
 
-    stopSignal = Signal()
+    stop_all_previous_workers_signal = Signal()
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         # Common thread pool to run folder generation in
-        self.threadPool = QThreadPool(self)
+        self.thread_pool = QThreadPool(self)
 
         main_layout = QVBoxLayout()
         main_layout.setSpacing(5)
 
         # Dropdown to select folder style
-        self.folderStyleDropdown = FolderStyleDropdown(
-            FolderStyle.big_sur_light, lambda: self.update_(True))
-        main_layout.addWidget(self.folderStyleDropdown)
+        self.folder_style_dropdown = FolderStyleDropdown(
+            FolderStyle.big_sur_light, lambda: self.update_folder_generation_variables(True))
+        main_layout.addWidget(self.folder_style_dropdown)
 
         # Folder icon + drag and drop area
-        self.centreImage = CenterFolderIconContainer()
-        self.centreImage.dragEnterEvent = self.unified_drag_enter
-        self.centreImage.dropEvent = self.unified_drop
-        main_layout.addWidget(self.centreImage)
+        self.centre_image = CentreFolderIconContainer()
+        self.centre_image.dragEnterEvent = lambda e: e.acceptProposedAction()
+        self.centre_image.dropEvent = self.unified_drop
+        main_layout.addWidget(self.centre_image)
 
         # Folder icon colour palette
-        self.colourPalette = ColourPalette(lambda: self.update_(True))
-        main_layout.addLayout(self.colourPalette)
+        self.colour_palette = ColourPalette(lambda: self.update_folder_generation_variables(True))
+        main_layout.addLayout(self.colour_palette)
 
         # Icon scale and font weight slider container
-        self.scaleThicknessSliders = ScaleThicknessSliders(
-            lambda: self.update_(True))
-        main_layout.addLayout(self.scaleThicknessSliders)
+        self.scale_thickness_sliders = ScaleThicknessSliders(
+            lambda: self.update_folder_generation_variables(True))
+        main_layout.addLayout(self.scale_thickness_sliders)
 
         # Main controls panels
-        self.setIconPanel = SetIconTextPanel(
-            lambda: self.update_(True, IconGenerationMethod.TEXT))
-        main_layout.addWidget(self.setIconPanel)
-        self.setLocationPanel = SetLocationPanel(self.update_)
-        main_layout.addWidget(self.setLocationPanel)
-        self.saveIconPanel = SaveIconPanel()
-        main_layout.addWidget(self.saveIconPanel)
+        self.set_icon_panel = SetIconTextPanel(
+            lambda: self.update_folder_generation_variables(True, IconGenerationMethod.TEXT))
+        main_layout.addWidget(self.set_icon_panel)
+        self.set_location_panel = SetLocationPanel(self.update_folder_generation_variables)
+        main_layout.addWidget(self.set_location_panel)
+        self.save_icon_panel = SaveIconPanel()
+        main_layout.addWidget(self.save_icon_panel)
 
         # Set up menu bar
         self._init_menu_bar()
@@ -82,10 +82,11 @@ class MainWindow(QMainWindow):
         main_widget.setFocus()
 
         # Initialize local storage of values and update folder icon
-        self.update_(True, IconGenerationMethod.NONE)
+        self.update_folder_generation_variables(True, IconGenerationMethod.NONE)
 
-    def _init_menu_bar(self):
-        """TODO
+    def _init_menu_bar(self) -> None:
+        """Initializes the menu bar for the application. Contains one button
+        to access the 'about panel'
         """
         self.menu_bar = QMenuBar()
         self.setMenuBar(self.menu_bar)
@@ -99,61 +100,60 @@ class MainWindow(QMainWindow):
         self.about_action.triggered.connect(_open_about_panel)
         self.menu.addAction(self.about_action)
 
-    def update_(self, generateFolder: bool = False,
-                newGenerationMethod: Optional[IconGenerationMethod] = None):
-        """Called on any update of any one of the user input fields or data sources. Generates the
-        folder icon based on the new data, if selected.
+    def update_folder_generation_variables(
+            self, generate_folder: bool = False,
+            new_generation_method: Optional[IconGenerationMethod] = None) -> None:
+        """Called on any update of any one of the user input fields or data
+        sources. Generates the folder icon based on the new data, if selected
 
-        Args:
-            generateFolder (bool, optional): Whether to generate the folder icon. Defaults to False.
-            generationMethod (Optional[IconGenerationMethod], optional): The new icon generation 
-                method to use. Defaults to None (aka, no change).
+        :param generate_folder: Whether to generate the folder icon
+        :param new_generation_method: The new icon generation method to use.
+            Defaults to None (a.k.a. no change)
         """
-
         # Set the generation method if specified
-        if newGenerationMethod is not None:
-            self.generationMethod = newGenerationMethod
+        if new_generation_method is not None:
+            self.generation_method = new_generation_method
 
         # Get updated variables for all options
-        folderStyle = self.folderStyleDropdown.getFolderStyle()
-        tintColour = self.colourPalette.getColour()
-        iconScale = self.scaleThicknessSliders.getScale()
-        iconThickness = self.scaleThicknessSliders.getThickness()
-        iconText = self.setIconPanel.getIconText()
+        folder_style = self.folder_style_dropdown.get_folder_style()
+        tint_colour = self.colour_palette.get_colour()
+        icon_scale = self.scale_thickness_sliders.get_scale()
+        icon_thickness = self.scale_thickness_sliders.get_thickness()
+        icon_text = self.set_icon_panel.get_icon_text()
         # makeNewFolder, outputFilepath = self.setLocationPanel.getOutputInfo() TODO
 
         # Check that there is text if in TEXT or SYMBOL mode, otherwise set to NONE mode
-        if (self.generationMethod is IconGenerationMethod.TEXT and not iconText) or (
-                self.generationMethod is IconGenerationMethod.SYMBOL and not self.symbolText):
-            self.generationMethod = IconGenerationMethod.NONE
+        if (self.generation_method is IconGenerationMethod.TEXT and not icon_text) or (
+                self.generation_method is IconGenerationMethod.SYMBOL and not self.symbol_text):
+            self.generation_method = IconGenerationMethod.NONE
 
         # Set text to be either the dragged symbol text or the typed text
-        text = self.symbolText if self.generationMethod is IconGenerationMethod.SYMBOL else iconText
+        text = self.symbol_text if self.generation_method is IconGenerationMethod.SYMBOL else icon_text
 
         # Asynchronously generate new folder icon
-        if generateFolder:
+        if generate_folder:
             # Keep track of unique ID for this task to only display latest one
-            folderGenerationTaskUUID = uuid.uuid4()
+            folder_generation_task_uuid = uuid.uuid4()
 
             # Create new worker task to generate folder icon
             # Ensure all parameters are immutable for thread safety
             worker = FolderGeneratorWorker(
-                folderGenerationTaskUUID, folder_style=folderStyle,
-                generationMethod=self.generationMethod, previewSize=None, iconScale=iconScale,
-                tintColour=tintColour, text=text, fontStyle=iconThickness,
-                image=deepcopy(self.iconImage))
+                folder_generation_task_uuid, folder_style=folder_style,
+                generation_method=self.generation_method, icon_scale=icon_scale,
+                tint_colour=tint_colour, text=text, font_style=icon_thickness,
+                image=deepcopy(self.icon_image))
 
             # Connect completion callback to the centreImage object, and set it to
             # receive the result of this task using its unique ID
-            worker.signals.completed.connect(self.centreImage.receive_image_data)
-            self.centreImage.setReadyToReceive(folderGenerationTaskUUID)
+            worker.signals.completed.connect(self.centre_image.receive_image_data)
+            self.centre_image.set_ready_to_receive(folder_generation_task_uuid)
 
             # Stop all other folder generation tasks and make this one stop too in the future
-            self.stopSignal.emit()
-            self.stopSignal.connect(worker.stop)
+            self.stop_all_previous_workers_signal.emit()
+            self.stop_all_previous_workers_signal.connect(worker.stop)
 
             # Start task
-            self.threadPool.start(worker)
+            self.thread_pool.start(worker)
 
     # def clear_icon(self):
     #     """Clears the current icon"""
@@ -171,26 +171,22 @@ class MainWindow(QMainWindow):
 
     # EVENT HANDLERS
 
-    def unified_drag_enter(self, event: QDragEnterEvent):
-        """Accepts all items dragged onto the main window"""
-        event.acceptProposedAction()
+    def unified_drop(self, event: QDropEvent) -> None:
+        """Called when a text/symbol/image/folder is dropped onto one of the
+        components in the main window. If the dropped item is a folder, set
+        the output folder location. If it is a text/symbol/image/image-file,
+        generate a folder icon and update the UI
 
-    def unified_drop(self, event: QDropEvent):
-        """Called when a text/symbol/image/folder is dropped onto one of the components
-        in the main window. If the dropped item is a folder, set the output folder location. If
-        it is a text/symbol/image/image-file, generate a folder icon and update the UI.
-
-        Args:
-            event (QDropEvent): Drop event
+        :param event: Drop event
         """
 
         data = event.mimeData()
 
         # Dragged data is an image
         if data.hasFormat("application/x-qt-image"):
-            self.iconImage = Image.fromqimage(data.imageData())
-            self.update_(True, IconGenerationMethod.IMAGE)
-            # self.update_preview_folder_image()
+            self.icon_image = Image.fromqimage(data.imageData())
+            self.update_folder_generation_variables(
+                True, IconGenerationMethod.IMAGE)
             event.accept()
 
         # Dragged item could be a file or directory
@@ -202,41 +198,38 @@ class MainWindow(QMainWindow):
 
                 # Dragged item is a directory (folder)
                 if os.path.isdir(path):
-                    self.setLocationPanel.setExistingFolderFilepath(
+                    self.set_location_panel.set_existing_folder_filepath(
                         os.path.dirname(path))
-                    # self.set_output_folder(path)
                     event.accept()
 
                 # Dragged item is a file, which could be an image
                 elif os.path.isfile(path):
                     try:
-                        self.iconImage = Image.open(path)
-                        self.update_(True, IconGenerationMethod.IMAGE)
-                        # self.update_preview_folder_image()
+                        self.icon_image = Image.open(path)
+                        self.update_folder_generation_variables(
+                            True, IconGenerationMethod.IMAGE)
                         event.accept()
-                    except:
+                    except Exception:
                         logging.exception(
                             "Dragged item is not an image file, or could not open")
 
         # Dragged item includes text (SF Symbol)
         elif data.hasFormat("text/plain"):
-            self.symbolText = data.text()
-            self.update_(True, IconGenerationMethod.SYMBOL)
-            # self.update_preview_folder_image()
+            self.symbol_text = data.text()
+            self.update_folder_generation_variables(True, IconGenerationMethod.SYMBOL)
             event.accept()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        """Clears the focus on any focussed input field when clicking anywhere on the window.
+        """Clears the focus on any focussed input field when clicking anywhere
+        on the window
 
-        Args:
-            event (QMouseEvent): Mouse click event to pass through
+        :param event: Mouse click event to pass through
         """
-
         focused_widget = QApplication.focusWidget()
         if isinstance(focused_widget, QLineEdit):
             focused_widget.clearFocus()
 
-        # Let mouce click event bubble through
+        # Let mouse click event bubble through
         super().mousePressEvent(event)
 
     ##############################

@@ -1,13 +1,11 @@
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QLineEdit, QPushButton, QSizePolicy, QVBoxLayout
-from fancyfolders.ui.components.containerradiobutton import ContainerRadioButton
-from fancyfolders.ui.components.customlabel import CustomLabel
+from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy
+
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
-from fancyfolders.ui.components.noneditableline import NonEditableLine
 
 
 class SaveIconPanel(InstructionPanel):
-    """Represents the 3rd instruction panel, containing buttons to save or reset the folder icon
+    """Represents the 3rd instruction panel, containing buttons to save or
+    reset the folder icon
     """
 
     def __init__(self):

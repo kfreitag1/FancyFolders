@@ -2,6 +2,8 @@ from colorsys import hsv_to_rgb, rgb_to_hsv
 from io import BytesIO
 import os
 import sys
+from typing import cast, Optional, List
+
 import Cocoa
 from PIL.Image import Image
 
@@ -11,37 +13,53 @@ from PIL.Image import Image
 #######################
 
 
-def divided_colour(starting_colour, final_colour):
+def divided_colour(starting_colour: tuple[int, int, int],
+                   final_colour: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Divides colours? TODO figure out what this is again
+
+    :param starting_colour: Starting colour (r, g, b)
+    :param final_colour: Final colour (r, g, b)
+    :return: Divided colour (r, g, b)
+    """
     colour_channels = zip(starting_colour, final_colour)
-    return tuple([clamp(int(((255 * final) / start)), 0, 255)
-                  for start, final in colour_channels])
+    return cast(tuple[int, int, int],
+                tuple([clamp(int(((255 * final) / start)), 0, 255)
+                       for start, final in colour_channels]))
 
 
-def rgb_int_to_hsv(rgb_colour):
+def rgb_int_to_hsv(rgb_colour: tuple[int, int, int]) -> tuple[float, float, float]:
+    """Converts an int based rgb colour to a float hsv
+
+    :param rgb_colour: Colour to convert (r, g, b)
+    :return: Converted colour (h, s, v)
+    """
     float_colours = [colour / 255 for colour in rgb_colour]
     return rgb_to_hsv(*float_colours)
 
 
-def hsv_to_rgb_int(hsv_colour):
+def hsv_to_rgb_int(hsv_colour: tuple[float, float, float]) -> tuple[int, int, int]:
+    """Converts a float based hsv colour to an int rgb
+
+    :param hsv_colour: Colour to convert (h, s, v)
+    :return: Converted colour (r, g, b)
+    """
     float_colours = hsv_to_rgb(*hsv_colour)
-    return tuple([int(colour * 255) for colour in float_colours])
+    return cast(tuple[int, int, int],
+                tuple([int(colour * 255) for colour in float_colours]))
 
 #######################
 # FILESYSTEM UTILITIES
 #######################
 
 
-def get_font_location(font_pathname, include_internal: bool = False):
+def get_font_location(font_pathname: str,
+                      include_internal: bool = False) -> Optional[str]:
     """Returns the path of the font if it is installed on the system. If not,
     returns None. May or may not include internal resources
 
-    Args:
-        font_pathname (str): Name of the font with .ttf or .otf
-        include_internal (bool, optional): Whether to check internal resources or not. 
-          Defaults to False.
-
-    Returns:
-        str / None: Path to the font, if found.
+    :param font_pathname: Name of the font with .ttf or .otf
+    :param include_internal: Whether to check internal resources or not
+    :return: Path to the font, if found
     """
     possible_font_locations = [
         "/System/Library/Fonts/",
@@ -58,9 +76,14 @@ def get_font_location(font_pathname, include_internal: bool = False):
     return None
 
 
-def get_first_font_installed(font_list, include_internal: bool = True):
-    """Returns the first font in the specified font list that is installed on the system,
-    otherwise returns None
+def get_first_font_installed(font_list: List[str],
+                             include_internal: bool = True) -> Optional[str]:
+    """Returns the first font in the specified font list that is installed
+    on the system, otherwise returns None
+
+    :param font_list: List of font names
+    :param include_internal: Whether to check internal resources or not
+    :return: Path to the font, if found
     """
     for font in font_list:
         font_path = get_font_location(font, include_internal)
@@ -69,8 +92,13 @@ def get_first_font_installed(font_list, include_internal: bool = True):
     return None
 
 
-def internal_resource_path(relative_path: str):
-    """ Get absolute path to internal app resource, works for dev and for PyInstaller """
+def internal_resource_path(relative_path: str) -> str:
+    """Get absolute path to internal app resource, works for dev and for
+    the app created through PyInstaller
+
+    :param relative_path: Relative filepath to resource
+    :return: Absolute filepath to resource
+    """
 
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
@@ -81,15 +109,13 @@ def internal_resource_path(relative_path: str):
     return os.path.join(base_path, relative_path)
 
 
-def set_folder_icon(pil_image: Image, path: str):
-    """Sets the icon of the file/directory at the specified path to the provided image
-    using the native macOS API, interfaced through PyObjC.
+def set_folder_icon(pil_image: Image, path: str) -> None:
+    """Sets the icon of the file/directory at the specified path to the
+    provided image using the native macOS API, interfaced through PyObjC
 
-    Args:
-        pil_image (Image): PIL Image to set the icon to
-        path (str): Absolute path to the file/directory
+    :param pil_image: PIL Image of the folder icon to set
+    :param path: Absolute path to the folder
     """
-
     # Need to first save the image data to a bytes buffer in PNG format
     # for the PyObjC API method
     buffered = BytesIO()
@@ -99,7 +125,14 @@ def set_folder_icon(pil_image: Image, path: str):
     Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(ns_image, path, 0)
 
 
-def generate_unique_folder_name(directory: str):
+def generate_unique_folder_name(directory: str) -> str:
+    """Generates a unique folder name in the 'untitled folder' format, in the
+    specified directory. I.e. if the folder already exists, increment the number
+    and try again
+
+    :param directory: Directory to search for folders in
+    :return: Unique folder name
+    """
     index = 1
     while True:
         new_folder_name = "untitled folder" + \
@@ -110,6 +143,7 @@ def generate_unique_folder_name(directory: str):
             os.mkdir(path)
             break
         index += 1
+    return new_folder_name
 
 #######################
 # MATH UTILITIES
@@ -120,7 +154,10 @@ def clamp(n, min_value, max_value):
     return min(max(n, min_value), max_value)
 
 
-def interpolate_int_to_float_with_midpoint(value: int, pre_min: int, pre_max: int, post_min: float, post_mid: float, post_max: float):
+def interpolate_int_to_float_with_midpoint(
+        value: int, pre_min: int, pre_max: int, post_min: float,
+        post_mid: float, post_max: float) -> float:
+
     pre_mid = int((pre_max - pre_min)/2) + 1
 
     if value == pre_mid:

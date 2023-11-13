@@ -1,200 +1,186 @@
-from colorsys import hsv_to_rgb, rgb_to_hsv
 import math
-from typing import Callable
-from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
-from fancyfolders.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR, INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET, OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont
+from colorsys import hsv_to_rgb, rgb_to_hsv
+from typing import Callable, cast
 
-from fancyfolders.utilities import clamp, divided_colour, get_font_location, get_first_font_installed, hsv_to_rgb_int, internal_resource_path, rgb_int_to_hsv
+from PIL import ImageFont, ImageDraw, ImageFilter, ImageChops, Image
+
+from fancyfolders.constants import (
+    BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR,
+    INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET,
+    OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont)
+from fancyfolders.utilities import (
+    clamp, divided_colour, get_font_location, get_first_font_installed,
+    hsv_to_rgb_int, internal_resource_path, rgb_int_to_hsv)
 
 
-def generate_folder_icon(folderStyle: FolderStyle = FolderStyle.big_sur_light,
-                         generationMethod: IconGenerationMethod = IconGenerationMethod.NONE,
-                         previewSize=None, iconScale=1.0, tintColour=None, text=None,
-                         fontStyle=SFFont.heavy, image=None,
-                         keepGoing: Callable[[], bool] = lambda: True) -> Image.Image:
-    """TODO REDO: Generates a folder icon PIL image based on the specified generation method 
-    and other parameters. Can be generated from either text or an input image.
+def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light,
+                         generation_method: IconGenerationMethod = IconGenerationMethod.NONE,
+                         icon_scale=1.0, tint_colour: tuple[int, int, int] = None,
+                         text: str = None, font_style=SFFont.heavy, image: Image.Image = None,
+                         keep_going: Callable[[], bool] = lambda: True) -> Image.Image:
+    """Generates a folder icon image based on the given parameters.
 
-    Args:
-        folder_style (FolderStyle, optional): The base folder to use. 
-          Defaults to FolderStyle.big_sur_light.
-        generation_method (IconGenerationMethod, optional): The method to generate the folder icon. 
-          Defaults to IconGenerationMethod.NONE.
-        preview_size (int, optional): The size of the image to generate, useful for speeding up 
-          preview images. If None then uses the maximum size of the base folder image. 
-          Defaults to None.
-        icon_scale (float, optional): Scale of the icon within, or exceeding, 
-          the bounding region. Defaults to 1.0.
-        tint_colour ((int * 3), optional): (r, g, b); The colour to tint the whole folder icon. 
-          Defaults to None.
-        text (str, optional): The text to display on the folder if using the Text generation method. 
-          Defaults to None.
-        font_style (SFFont, optional): The specified font size to use for generating the  
-          text-based icon. Defaults to SFFont.heavy.
-        image (Image, optional): PIL Image to generate the icon if using the Image generation method. 
-          Defaults to None.
+    Returns a PIL Image file representing the folder icon. This function takes
+    a long time to complete. A callback function may be passed which checks
+    whether the execution should continue, will throw a TaskExitedException
+    if this callback function returns false.
 
-    Returns:
-        Image: PIL Image of the resulting folder icon
+
+    :param folder_style: The macOS folder style
+    :param generation_method: Whether to generate the folder without any icon,
+        with a text based icon, with a symbol icon, or with an image
+    :param icon_scale:
+    :param tint_colour:
+    :param text: Text or symbol to use as the icon
+    :param font_style:
+    :param image: Dragged image to use as the icon
+    :param keep_going:
+    :return: The PIL Image
+    :raises TaskExitedException: The worker is requesting to cancel this method.
     """
 
-    # Set up exit check method to stop execution of this method if requested
     from fancyfolders.threadsafefoldergeneration import TaskExitedException
 
-    def exitCheck():
-        if not keepGoing():
+    def exit_check() -> None:
+        """Exits the folder generation if requested externally"""
+        if not keep_going():
             raise TaskExitedException
 
     # -------------------------------------------------------------------------
-    # Get base folder image
-    folderImage = Image.open(internal_resource_path(
-        "assets/" + folderStyle.filename()))
-    exitCheck()
-
-    # -------------------------------------------------------------------------
-    # Default size is the folder size, otherwise use the specified preview size
-    if previewSize:
-        size = previewSize
-        folderImage = folderImage.resize((size, size))
-    else:
-        size = folderStyle.size()
-    exitCheck()
+    # Get base folder image and its size
+    folder_image = Image.open(internal_resource_path(
+        "assets/" + folder_style.filename()))
+    size = folder_style.size()
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Darken shadow to match default macOS folders
-    folderImage = _increasedShadow(
-        folderImage, factor=FOLDER_SHADOW_INCREASE_FACTOR)
-    exitCheck()
+    folder_image = _increased_shadow(
+        folder_image, factor=FOLDER_SHADOW_INCREASE_FACTOR)
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Generate mask image based on icon generation method
-    maskImage = None
-    if generationMethod is IconGenerationMethod.NONE:
-        if tintColour is None:
-            return folderImage
-        return adjustedColours(folderImage, folderStyle.baseColour(), tintColour)
-    elif generationMethod is IconGenerationMethod.IMAGE:
-        maskImage = _generateMaskFromImage(image)
-    elif generationMethod is IconGenerationMethod.TEXT or generationMethod is IconGenerationMethod.SYMBOL:
-        maskImage = _generateMaskFromText(text, size, fontStyle)
-    exitCheck()
+    mask_image = None
+    if generation_method is IconGenerationMethod.NONE:
+        if tint_colour is None:
+            return folder_image
+        return adjusted_colours(folder_image, folder_style.base_colour(), tint_colour)
+    elif generation_method is IconGenerationMethod.IMAGE:
+        mask_image = _generate_mask_from_image(image)
+    elif (generation_method is IconGenerationMethod.TEXT or
+          generation_method is IconGenerationMethod.SYMBOL):
+        mask_image = _generate_mask_from_text(text, size, font_style)
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Bounding box to place icon
-    boundingBoxPercentages = (0.086, 0.29, 0.914, 0.777)
-    boundingBox = tuple(int(size * percent)
-                        for percent in boundingBoxPercentages)
-    newBoundingBox = scaledBox(
-        boundingBox, iconScale * ICON_BOX_SCALING_FACTOR, (size, size)
-    )
-    exitCheck()
+    bounding_box_percentages = (0.086, 0.29, 0.914, 0.777)
+    bounding_box = cast(
+        tuple[int, int, int, int],
+        tuple(int(size * percent) for percent in bounding_box_percentages))
+    new_bounding_box = scaled_box(
+        bounding_box, icon_scale * ICON_BOX_SCALING_FACTOR, (size, size))
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Fit the icon mask within the bounding box
-    formattedMask = Image.new("L", (size, size), "black")
-    scaledImage, pasteBox = _resizeImageInBox(
-        maskImage, newBoundingBox)
-    formattedMask.paste(scaledImage, pasteBox, scaledImage)
-    exitCheck()
+    formatted_mask = Image.new("L", (size, size), "black")
+    scaled_image, paste_box = _resize_image_in_box(
+        mask_image, new_bounding_box)
+    formatted_mask.paste(scaled_image, paste_box, scaled_image)
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Generate the center colour to be a desired colour after the multiply filter
-    centerColour = divided_colour(
-        folderStyle.baseColour(), folderStyle.icon_colour())
-    exitCheck()
+    center_colour = divided_colour(
+        folder_style.base_colour(), folder_style.icon_colour())
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Calculate shadow colour to be slightly darker than the center colour
-    centerHue, centerSat, centerVal = rgb_int_to_hsv(centerColour)
-    shadowHsvColour = (centerHue, centerSat, centerVal *
-                       INNER_SHADOW_COLOUR_SCALING_FACTOR)
-    shadowColour = hsv_to_rgb_int(shadowHsvColour)
-    exitCheck()
+    center_hue, center_sat, center_val = rgb_int_to_hsv(center_colour)
+    shadow_hsv_colour = (center_hue, center_sat, center_val *
+                         INNER_SHADOW_COLOUR_SCALING_FACTOR)
+    shadow_colour = hsv_to_rgb_int(shadow_hsv_colour)
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Create shadow insert image
-    shadowImage = Image.composite(
-        Image.new("RGB", formattedMask.size, centerColour),
-        Image.new("RGB", formattedMask.size, shadowColour),
-        formattedMask
-    )
-    exitCheck()
+    shadow_image = Image.composite(
+        Image.new("RGB", formatted_mask.size, center_colour),
+        Image.new("RGB", formatted_mask.size, shadow_colour),
+        formatted_mask)
+    exit_check()
 
-    shadowImage = shadowImage.filter(
+    shadow_image = shadow_image.filter(
         ImageFilter.GaussianBlur(INNER_SHADOW_BLUR))
 
-    exitCheck()
-    shadowImage = ImageChops.offset(
-        shadowImage, 0, math.floor(size * INNER_SHADOW_Y_OFFSET))
+    exit_check()
+    shadow_image = ImageChops.offset(
+        shadow_image, 0, math.floor(size * INNER_SHADOW_Y_OFFSET))
 
-    exitCheck()
-    shadowImage.putalpha(formattedMask)
-    shadowInsert = ImageChops.multiply(folderImage, shadowImage)
+    exit_check()
+    shadow_image.putalpha(formatted_mask)
+    shadow_insert = ImageChops.multiply(folder_image, shadow_image)
 
-    exitCheck()
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Create highlight insert image
-    highlightImage = Image.composite(
-        Image.new("RGBA", formattedMask.size, "#131313"),
-        Image.new("RGBA", formattedMask.size, "black"),
-        formattedMask
-    )
-    exitCheck()
+    highlight_image = Image.composite(
+        Image.new("RGBA", formatted_mask.size, "#131313"),
+        Image.new("RGBA", formatted_mask.size, "black"),
+        formatted_mask)
+    exit_check()
 
-    highlightImage = highlightImage.filter(
+    highlight_image = highlight_image.filter(
         ImageFilter.GaussianBlur(OUTER_HIGHLIGHT_BLUR))
-    exitCheck()
+    exit_check()
 
-    highlightImage = ImageChops.offset(
-        highlightImage, 0, math.floor(size * OUTER_HIGHLIGHT_Y_OFFSET))
-    exitCheck()
+    highlight_image = ImageChops.offset(
+        highlight_image, 0, math.floor(size * OUTER_HIGHLIGHT_Y_OFFSET))
+    exit_check()
 
-    highlightImage.putalpha(0)
-    highlightInsert = ImageChops.add(folderImage, highlightImage)
-    exitCheck()
+    highlight_image.putalpha(0)
+    highlight_insert = ImageChops.add(folder_image, highlight_image)
+    exit_check()
 
     # -------------------------------------------------------------------------
     # Combine the two
-    result = Image.alpha_composite(highlightInsert, shadowInsert)
-    exitCheck()
+    result = Image.alpha_composite(highlight_insert, shadow_insert)
+    exit_check()
 
-    #
+    # -------------------------------------------------------------------------
     # Apply tint colour if specified, return result
-    if tintColour is None:
+    if tint_colour is None:
         return result
-    return adjustedColours(result, folderStyle.baseColour(), tintColour)
+    return adjusted_colours(result, folder_style.base_colour(), tint_colour)
 
 
-def _generateMaskFromText(text, image_size, fontStyle=SFFont.heavy):
-    """Generates an image mask from the specified text and font parameters. To be used
-    in downstream icon generation.
+def _generate_mask_from_text(text, image_size, font_style=SFFont.heavy):
+    """Generates an image mask from the specified text and font parameters.
 
-    Args:
-        text (str): Text to display
-        image_size (int): Size of the image in pixels
-        font_style (SFFont, optional): Font weight to use. Defaults to SFFont.heavy.
-
-    Returns:
-        Image : PIL Image (L) mask, white subject on black background
+    :param text: Text to display
+    :param image_size: Size of the image in pixels
+    :param font_style: Font weight to use
+    :return: PIL Image (L) mask, white subject on black background
     """
-    # TODO add multiline support
-    # TODO add text aligning
-    # TODO add letter size independant mode (make lowercase letters not same height as uppercase)
 
-    # Dissallow really long text entries, greater than 25 characters
-    text = text[0:25]
+    # TODO: maybe add advanced features:
+    #  add multiline support
+    #  add text aligning
+    #  add letter size independent mode (lowercase letters not same height as uppercase)
 
     # Get the font path, either installed or the local backup
-    fontPath = get_font_location(
-        fontStyle.filename(), include_internal=False)
-    if fontPath is None:
-        fontPath = get_first_font_installed(
-            [fontStyle.filename()] + BACKUP_FONTS, include_internal=True)
+    font_filepath = get_font_location(font_style.filename(), include_internal=False)
+    if font_filepath is None:
+        font_filepath = get_first_font_installed(
+            [font_style.filename()] + BACKUP_FONTS, include_internal=True)
 
-    font = ImageFont.truetype(fontPath, int(image_size/2))
+    font = ImageFont.truetype(font_filepath, int(image_size / 2))
 
-    textDrawOptions = {
+    text_draw_options = {
         "text": text,
         "anchor": "mm",
         "align": "center",
@@ -204,171 +190,155 @@ def _generateMaskFromText(text, image_size, fontStyle=SFFont.heavy):
 
     # Determine the exact size of the temporary image necessary to draw the complete
     # text with the specified options, avoids an unnecessarily large buffer image
+    temp_draw = ImageDraw.Draw(Image.new("L", (0, 0)))
+    text_bbox = temp_draw.textbbox((0, 0), **text_draw_options)
+    text_size = (text_bbox[2] + abs(text_bbox[0]),
+                 text_bbox[3] + abs(text_bbox[1]))
+    text_center = (abs(text_bbox[0]), abs(text_bbox[1]))
 
-    tempDraw = ImageDraw.Draw(Image.new("L", (0, 0)))
-    textBbox = tempDraw.textbbox((0, 0), **textDrawOptions)
-    textSize = (textBbox[2] + abs(textBbox[0]),
-                textBbox[3] + abs(textBbox[1]))
-    textCenter = (abs(textBbox[0]), abs(textBbox[1]))
+    text_image = Image.new("L", text_size)
+    text_draw = ImageDraw.Draw(text_image)
+    text_draw.text(text_center, **text_draw_options, fill="white")
 
-    textImage = Image.new("L", textSize)
-    textDraw = ImageDraw.Draw(textImage)
-    textDraw.text(textCenter, **textDrawOptions, fill="white")
-
-    return textImage
+    return text_image
 
 
-def _generateMaskFromImage(image: Image):
-    """Generates an image mask from the specified PIL image. To be used
-    in downstream icon generation.
+def _generate_mask_from_image(image: Image.Image) -> Image.Image:
+    """Generates an image mask from the specified PIL image.
 
-    Args:
-        image (Image): PIL image (RGB / RGBA) to display
-
-    Returns:
-        Image: PIL Image (L) mask, white subject on black background
+    :param image: PIL image (RGB / RGBA) to display
+    :return: PIL Image (L) mask, white subject on black background
     """
-    whiteBackground = Image.new("L", image.size, "white")
+    white_background = Image.new("L", image.size, "white")
     mask = image if image.mode in ["RGBA", "RGBa"] else None
-    whiteBackground.paste(image, mask)
-    whiteBackground = _normalizedImage(whiteBackground)
+    white_background.paste(image, mask)
+    white_background = _normalized_image(white_background)
 
-    return ImageChops.invert(whiteBackground)
+    return ImageChops.invert(white_background)
 
 
-def adjustedColours(image: Image, baseColour, tintColour):
-    """Changes the colours across the specified image by an ammount that would shift the
-    'base colour' to the 'tint colour.'
+def adjusted_colours(image: Image.Image, base_colour: tuple[float, float, float],
+                     tint_colour: tuple[float, float, float]) -> Image.Image:
+    """Changes the colours across the specified image by an amount that would
+    shift the 'base colour' to the 'tint colour.'
 
-    Args:
-        image (Image): PIL Image (RGB / RGBA)
-        base_colour (_type_): _description_
-        tint_colour (_type_): _description_
-
-    Returns:
-        _type_: _description_
+    :param image: PIL Image (RGB/RGBA)
+    :param base_colour: Starting base colour
+    :param tint_colour: Final tint colour
+    :return: PIL Image (RGB/RGBA)
     """
-    startHue, startSat, startVal = rgb_int_to_hsv(baseColour)
-    finalHue, finalSat, finalVal = rgb_int_to_hsv(tintColour)
+    start_hue, start_sat, start_val = rgb_int_to_hsv(base_colour)
+    final_hue, final_sat, final_val = rgb_int_to_hsv(tint_colour)
 
-    hueOffset = finalHue - startHue
-    satFactor = finalSat / startSat
-    valFactor = finalVal / startVal
+    hue_offset = final_hue - start_hue
+    sat_factor = final_sat / start_sat
+    val_factor = final_val / start_val
+
     # sat_offset = final_sat - start_sat
     # val_offset = final_val - start_val
 
-    def adjustPixelColour(r, g, b):
+    def adjust_pixel_colour(r, g, b):
         h, s, v = rgb_to_hsv(r, g, b)
 
-        h = (h + hueOffset) % 1.0
-        s = clamp(s * satFactor, 0.0, 1.0)
-        v = clamp(v * valFactor, 0.0, 1.0)
+        h = (h + hue_offset) % 1.0
+        s = clamp(s * sat_factor, 0.0, 1.0)
+        v = clamp(v * val_factor, 0.0, 1.0)
         # s = clamp(s + sat_offset, 0.0, 1.0)
         # v = clamp(v + val_offset, 0.0, 1.0)
 
         return hsv_to_rgb(h, s, v)
 
-    return image.filter(ImageFilter.Color3DLUT.generate(4, adjustPixelColour, 3))
+    return image.filter(ImageFilter.Color3DLUT.generate(4, adjust_pixel_colour, 3))
 
 
-def _increasedShadow(folderImage, factor):
-    """Returns a new image with a more intense shadow by increasing the opacity of pixels
-    with tranparency
+def _increased_shadow(folder_image, factor) -> Image.Image:
+    """Returns a new image with a more intense shadow by increasing the
+    opacity of pixels with transparency.
 
-    Args:
-        folder_image (Image): Image to increase shadow on
-        factor (float): Scalar value to increase opacity by
-
-    Returns:
-        Image: New Image
+    :param folder_image: Image to increase shadow on
+    :param factor: Scalar value to increase opacity by
+    :return: New image
     """
-    r, g, b, a = folderImage.split()
+    r, g, b, a = folder_image.split()
     a = a.point(lambda x: min(int(x * factor), 255))
 
     return Image.merge("RGBA", (r, g, b, a))
 
 
-def _normalizedImage(image: Image, steepness=0.18):
-    """Normalizes the pixel data from the grayscale image to 0 - 255 and applies a sigmoid function
+def _normalized_image(image: Image.Image, steepness=0.18) -> Image.Image:
+    """Produces a normalised PIL image mask.
+
+    Normalises the pixel data from the grayscale image to 0 - 255 and applies a sigmoid function
     to bring values closer to the extremes (0 or 255).
 
-    Args:
-        image (Image): PIL Image (L)
-        steepness (float, optional): Intensity of sigmoid curve, smaller values lead to
-          less separated colours. Defaults to 0.12.
-
-    Returns:
-        Image: PIL Image (L) that has been normalized
+    :param image: PIL Image (L)
+    :param steepness: Intensity of sigmoid curve, smaller values lead to
+        less separated colours
+    :return: PIL Image (L) that has been normalised
     """
-    minValue, maxValue = image.getextrema()
+    min_value, max_value = image.getextrema()
 
-    def sigmoidNormalize(value):
-        normalized_value = int((value-minValue)*255/(maxValue-minValue))
-        return 255/(1 + math.exp(-steepness * (normalized_value - 127)))
+    def sigmoid_normalize(value):
+        normalized_value = int((value - min_value) * 255 / (max_value - min_value))
+        return 255 / (1 + math.exp(-steepness * (normalized_value - 127)))
 
-    try:  # Avoids division by zero error on completely flat images
-        return Image.eval(image, sigmoidNormalize)
-    except:
+    try:
+        return Image.eval(image, sigmoid_normalize)
+    except ZeroDivisionError:
+        # Image was completely flat, already "normalized"
         return image
 
 
-def _resizeImageInBox(image: Image, box):
-    """Returns the image scaled into the bounding box with the same aspect ratio, 
-    from the center
+def _resize_image_in_box(image: Image.Image, box: tuple[int, int, int, int]) \
+        -> tuple[Image.Image, tuple[int, int, int, int]]:
+    """Returns the image, scaled into the bounding box with the same aspect
+    ratio, from the center
 
-    Args:
-        image (Image): PIL Image
-        box (int * 4): Bounding box to insert image into: x1, y1, x2, y2
-
-    Returns:
-        Image, (int * 4): Scaled image, New bounding box to insert into
+    :param image: PIL Image
+    :param box: Bounding box to insert image into: x1, y1, x2, y2
+    :return: Scaled PIL image, New bounding box to insert into
     """
-    topPoint, bottomPoint = box[0:2], box[2:4]
-    boxSize = (bottomPoint[0] - topPoint[0], bottomPoint[1] - topPoint[1])
+    top_point, bottom_point = box[0:2], box[2:4]
+    box_size = (bottom_point[0] - top_point[0], bottom_point[1] - top_point[1])
 
-    downscaleRatio = min(
-        boxSize[0] / image.size[0], boxSize[1] / image.size[1])
-    scaledImage = image.resize(
-        (int(image.width * downscaleRatio), int(image.height * downscaleRatio)))
+    downscale_ratio = min(box_size[0] / image.size[0], box_size[1] / image.size[1])
+    scaled_image = image.resize((int(image.width * downscale_ratio),
+                                 int(image.height * downscale_ratio)))
 
-    startingX = topPoint[0] + int((boxSize[0] - scaledImage.size[0]) / 2)
-    startingY = topPoint[1] + int((boxSize[1] - scaledImage.size[1]) / 2)
+    starting_x = top_point[0] + int((box_size[0] - scaled_image.size[0]) / 2)
+    starting_y = top_point[1] + int((box_size[1] - scaled_image.size[1]) / 2)
 
-    newBox = (
-        startingX, startingY,
-        startingX + scaledImage.size[0],
-        startingY + scaledImage.size[1]
-    )
+    new_bounding_box = (starting_x, starting_y,
+                        starting_x + scaled_image.size[0],
+                        starting_y + scaled_image.size[1])
 
-    return (scaledImage, newBox)
+    return scaled_image, new_bounding_box
 
 
-def scaledBox(box, scale, maxSize):
-    """Returns the box scaled from the center by a constant amount along the diagonal,
-    clipped into the region from (0,0) to max_size
+def scaled_box(box: tuple[int, int, int, int], scale: float,
+               max_size: tuple[int, int]) -> tuple[int, int, int, int]:
+    """Returns the box scaled from the center by a constant amount along the
+    diagonal, clipped into the region from (0,0) to max_size
 
-    Args:
-        box (int/float * 4): Box to scale: x1, y1, x2, y2
-        scale (float): Constant scalar
-        max_size (int, int): Maximum size to clip scaled box to
-
-    Returns:
-        (int * 4): Scaled box
+    :param box: Box to scale: x1, y1, x2, y2
+    :param scale: Constant scalar
+    :param max_size: Maximum size to clip scaled box to: width, height
+    :return: Scaled box
     """
-    topPoint, bottomPoint = box[0:2], box[2:4]
-    center = (int((bottomPoint[0] + topPoint[0])/2),
-              int((bottomPoint[1] + topPoint[1])/2))
+    top_point, bottom_point = box[0:2], box[2:4]
+    center = (int((bottom_point[0] + top_point[0]) / 2),
+              int((bottom_point[1] + top_point[1]) / 2))
 
     # Scaled offsets from the center point (along the diagonals)
-    topOffset = (int((topPoint[0] - center[0])*scale),
-                 int((topPoint[1] - center[1])*scale))
-    bottomOffset = (int(
-        (bottomPoint[0] - center[0])*scale), int((bottomPoint[1] - center[1])*scale))
+    top_offset = (int((top_point[0] - center[0]) * scale),
+                  int((top_point[1] - center[1]) * scale))
+    bottom_offset = (int((bottom_point[0] - center[0]) * scale),
+                     int((bottom_point[1] - center[1]) * scale))
 
     # Re-add offsets to the center point to get absolute position
-    newTopPoint = (max(0, center[0] + topOffset[0]),
-                   max(0, center[1] + topOffset[1]))
-    newBottomPoint = (min(maxSize[0], center[0] + bottomOffset[0]),
-                      min(maxSize[1], center[1] + bottomOffset[1]))
+    new_top_point = (max(0, center[0] + top_offset[0]),
+                     max(0, center[1] + top_offset[1]))
+    new_bottom_point = (min(max_size[0], center[0] + bottom_offset[0]),
+                        min(max_size[1], center[1] + bottom_offset[1]))
 
-    return (*newTopPoint, *newBottomPoint)
+    return new_top_point + new_bottom_point

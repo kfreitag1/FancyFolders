@@ -38,44 +38,44 @@ class QWaitingSpinner(QWidget):
     """
 
     @Property(int)
-    def currentCounter(self):
-        return self._currentcounter
+    def counter(self):
+        return self._counter
 
-    @currentCounter.setter
-    def currentCounter(self, value: int):
-        self._currentcounter = value
+    @counter.setter
+    def counter(self, value: int):
+        self._counter = value
         self.update()
 
     def __init__(self, parent, colour: QColor = Qt.black, roundness=100.0,
-                 minimumTrailOpacity=3.14, trailFadePercentage=80.0, revolutionsPerSecond=1.57,
-                 numberOfLines=20, lineLength=10.0, lineWidth=2.0, innerRadius=10.0,
-                 centerOnParent=True, disableParentWhenSpinning=False,
+                 minimum_trail_opacity=3.14, trail_fade_percentage=80.0, revolutions_per_second=1.57,
+                 num_lines=20, line_length=10.0, line_width=2.0, inner_radius=10.0,
+                 center_on_parent=True, disable_parent_when_spinning=False,
                  modality=Qt.WindowModality.NonModal):
         super().__init__(parent)
 
-        self._centerOnParent = centerOnParent
-        self._disableParentWhenSpinning = disableParentWhenSpinning
+        self._centerOnParent = center_on_parent
+        self._disableParentWhenSpinning = disable_parent_when_spinning
 
         # Set display properties
         self._color = colour
         self._roundness = roundness
-        self._minimumTrailOpacity = minimumTrailOpacity
-        self._trailFadePercentage = trailFadePercentage
-        self._revolutionsPerSecond = revolutionsPerSecond
-        self._numberOfLines = numberOfLines
-        self._lineLength = lineLength
-        self._lineWidth = lineWidth
-        self._innerRadius = innerRadius
-        self._isSpinning = False
+        self._minimum_trail_opacity = minimum_trail_opacity
+        self._trail_fade_percentage = trail_fade_percentage
+        self._revolutions_per_second = revolutions_per_second
+        self._num_lines = num_lines
+        self._line_length = line_length
+        self._line_width = line_width
+        self._inner_radius = inner_radius
+        self._is_spinning = False
 
-        self.currentCounter = 0
+        self.counter = 0
 
         # Configure looping animation
-        self._animation = QPropertyAnimation(self, b"currentCounter", self)
-        self._animation.setDuration(math.floor(1000 / revolutionsPerSecond))
+        self._animation = QPropertyAnimation(self, b"counter", self)
+        self._animation.setDuration(math.floor(1000 / revolutions_per_second))
         self._animation.setLoopCount(-1)
         self._animation.setStartValue(0)
-        self._animation.setEndValue(self._numberOfLines)
+        self._animation.setEndValue(self._num_lines)
         self._animation.start()
 
         self.hide()
@@ -83,30 +83,30 @@ class QWaitingSpinner(QWidget):
         self.setWindowModality(modality)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-        self._setSize()
+        self._set_size()
 
     #########################
     # PUBLIC METHODS
     #########################
 
     def start(self):
-        if self._isSpinning:
+        if self._is_spinning:
             return
 
-        self._isSpinning = True
+        self._is_spinning = True
         self._animation.start()
         self.show()
 
     def stop(self):
-        if not self._isSpinning:
+        if not self._is_spinning:
             return
 
-        self._isSpinning = False
+        self._is_spinning = False
         self._animation.stop()
         self.hide()
 
-    def isSpinning(self) -> bool:
-        return self._isSpinning
+    def is_spinning(self) -> bool:
+        return self._is_spinning
 
     #########################
     # PRIVATE METHODS
@@ -117,52 +117,50 @@ class QWaitingSpinner(QWidget):
             painter.fillRect(self.rect(), Qt.GlobalColor.transparent)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-            if self.currentCounter >= self._numberOfLines:
-                self.currentCounter = 0
+            if self.counter >= self._num_lines:
+                self.counter = 0
 
             painter.setPen(Qt.PenStyle.NoPen)
-            for i in range(0, self._numberOfLines):
+            for i in range(0, self._num_lines):
                 painter.save()
-                painter.translate(self._innerRadius + self._lineLength,
-                                  self._innerRadius + self._lineLength)
-                rotateAngle = float(360 * i) / float(self._numberOfLines)
-                painter.rotate(rotateAngle)
-                painter.translate(self._innerRadius, 0)
-                distance = self._lineCountDistanceFromPrimary(
-                    i, self.currentCounter, self._numberOfLines)
-                color = self._currentLineColor(distance, self._numberOfLines, self._trailFadePercentage,
-                                               self._minimumTrailOpacity, self._color)
+                painter.translate(self._inner_radius + self._line_length,
+                                  self._inner_radius + self._line_length)
+                rotate_angle = float(360 * i) / float(self._num_lines)
+                painter.rotate(rotate_angle)
+                painter.translate(self._inner_radius, 0)
+                distance = self._line_count_distance_from_primary(i, self.counter)
+                color = self._current_line_color(distance)
                 painter.setBrush(color)
-                rect = QRect(0, int(-self._lineWidth / 2),
-                             int(self._lineLength), int(self._lineWidth))
+                rect = QRect(0, int(-self._line_width / 2),
+                             int(self._line_length), int(self._line_width))
                 painter.drawRoundedRect(
                     rect, self._roundness, self._roundness, Qt.SizeMode.RelativeSize)
                 painter.restore()
 
-    def _setSize(self):
-        size = int((self._innerRadius + self._lineLength) * 2)
+    def _set_size(self):
+        size = int((self._inner_radius + self._line_length) * 2)
         self.setFixedSize(size, size)
 
-    def _lineCountDistanceFromPrimary(self, current, primary, totalNrOfLines):
+    def _line_count_distance_from_primary(self, current, primary):
         distance = primary - current
         if distance < 0:
-            distance += totalNrOfLines
+            distance += self._num_lines
         return distance
 
-    def _currentLineColor(self, countDistance, totalNrOfLines, trailFadePerc, minOpacity, colorinput):
-        color = QColor(colorinput)
-        if countDistance == 0:
+    def _current_line_color(self, count_distance) -> QColor:
+        color = QColor(self._color)
+        if count_distance == 0:
             return color
-        minAlphaF = minOpacity / 100.0
-        distanceThreshold = int(
-            math.ceil((totalNrOfLines - 1) * trailFadePerc / 100.0))
-        if countDistance > distanceThreshold:
-            color.setAlphaF(minAlphaF)
+        min_alpha_f = self._minimum_trail_opacity / 100.0
+        distance_threshold = int(
+            math.ceil((self._num_lines - 1) * self._trail_fade_percentage / 100.0))
+        if count_distance > distance_threshold:
+            color.setAlphaF(min_alpha_f)
         else:
-            alphaDiff = color.alphaF() - minAlphaF
-            gradient = alphaDiff / float(distanceThreshold + 1)
-            resultAlpha = color.alphaF() - gradient * countDistance
+            alpha_diff = color.alphaF() - min_alpha_f
+            gradient = alpha_diff / float(distance_threshold + 1)
+            result_alpha = color.alphaF() - gradient * count_distance
             # If alpha is out of bounds, clip it.
-            resultAlpha = min(1.0, max(0.0, resultAlpha))
-            color.setAlphaF(resultAlpha)
+            result_alpha = min(1.0, max(0.0, result_alpha))
+            color.setAlphaF(result_alpha)
         return color

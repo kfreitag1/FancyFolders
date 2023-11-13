@@ -1,24 +1,32 @@
-from typing import Callable, Optional
-from PySide6.QtWidgets import QComboBox, QWidget
+from typing import Callable
+
+from PySide6.QtWidgets import QComboBox
 
 from fancyfolders.constants import FolderStyle
 
 
 class FolderStyleDropdown(QComboBox):
-    """Represents a dropdown to select one of the folder styles (macOS versions)
+    """Represents a dropdown to select one of the folder styles
+    (macOS versions)
     """
 
-    def __init__(self, defaultStyle: FolderStyle, onChange: Callable[[], None]) -> None:
+    def __init__(self, default_style: FolderStyle,
+                 on_change: Callable[[], None]) -> None:
+        """Constructs a new folder style dropdown
+
+        :param default_style: Default folder style choice
+        :param on_change: Callback to run whenever a selection is made
+        """
         super().__init__()
 
         # All possible folder styles
         self.addItems([style.display_name() for style in FolderStyle])
 
         # Set default
-        self.setCurrentIndex(defaultStyle.value)
+        self.setCurrentIndex(default_style.value)
 
         # Setup callback on change
-        self.currentIndexChanged.connect(lambda _: onChange())
+        self.currentIndexChanged.connect(lambda _: on_change())
 
-    def getFolderStyle(self) -> FolderStyle:
+    def get_folder_style(self) -> FolderStyle:
         return FolderStyle(self.currentIndex())

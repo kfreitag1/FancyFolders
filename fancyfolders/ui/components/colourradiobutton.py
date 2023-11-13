@@ -1,10 +1,11 @@
 from enum import Enum
+from typing import Optional
+
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QBrush, QColor, QConicalGradient, QPaintEvent, QPainter, QPen
 from PySide6.QtWidgets import QRadioButton
 
-from fancyfolders.constants import VERSION, FolderStyle, TintColour
-from fancyfolders.utilities import internal_resource_path
+from fancyfolders.constants import TintColour
 
 
 class ColourButtonType(Enum):
@@ -14,8 +15,7 @@ class ColourButtonType(Enum):
 
 
 class ColourRadioButton(QRadioButton):
-    """Custom button to be used in the colour palette selector for folder tint.
-    """
+    """Custom button used in the colour palette selector for folder tint."""
 
     BORDER_RADIUS = 5.0
     ACTIVE_BORDER_WIDTH = 3.0
@@ -26,23 +26,23 @@ class ColourRadioButton(QRadioButton):
 
     EMPTY_FILL_COLOUR = (255, 255, 255)
 
-    def __init__(self, type: ColourButtonType, colour: tuple[int, int, int] = None):
-        """Initializes the ColourRadioButton
+    def __init__(self, button_type: ColourButtonType,
+                 colour: Optional[tuple[int, int, int]] = None) -> None:
+        """Constructs a new colour radio button with the specified type
 
-        Args:
-            type: Whether the button represents a regular color, no colour, or a multicolour option.
-            colour: Optional colour to set (r, g, b)
+        :param button_type: Whether the button represents a regular color,
+            no colour, or a multicolour option
+        :param colour: Colour to set (r, g, b), or None
         """
         super().__init__()
 
         self.colour = colour
-        self.type = type
+        self.type = button_type
 
         self.setMinimumHeight(30)
 
     def hitButton(self, point: QPoint) -> bool:
-        """Changes the area where the button is clickable.
-        """
+        """Changes the area where the button is clickable."""
         return self._get_center_square().contains(point)
 
     def paintEvent(self, _: QPaintEvent) -> None:
@@ -112,12 +112,11 @@ class ColourRadioButton(QRadioButton):
 
         painter.end()
 
-    def _get_center_square(self):
-        """Returns the square contained within the center of the widget size. Assumes that 
-        the width is greater than the height.
+    def _get_center_square(self) -> QRect:
+        """Returns the square contained within the center of the widget size.
+        Requires that the width is greater than the height
 
-        Returns:
-            QRect: Rect containing the center square
+        :return: Rect containing the center square
         """
         size = self.size()
 

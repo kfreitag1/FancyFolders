@@ -10,8 +10,6 @@ VERSION = "1.0"
 
 # UI
 
-PREVIEW_IMAGE_SIZE = 300
-
 ICON_SCALE_SLIDER_MAX = 31
 MAXIMUM_ICON_SCALE_VALUE = 2.0
 MINIMUM_ICON_SCALE_VALUE = 0.1
@@ -46,7 +44,10 @@ class FolderStyle(Enum):
     catalina = 2
 
     def filename(self):
-        """Filename of the icon in the assets folder"""
+        """Filename of the icon in the assets folder
+
+        :return: Filename
+        """
         return {
             FolderStyle.big_sur_light: "big_sur_light.png",
             FolderStyle.big_sur_dark: "big_sur_dark.png",
@@ -54,16 +55,20 @@ class FolderStyle(Enum):
         }[self]
 
     def display_name(self):
-        """Name to display to the user"""
+        """Name to display to the user
+
+        :return: Name
+        """
         return {
             FolderStyle.big_sur_light: "macOS Big Sur - Light mode",
             FolderStyle.big_sur_dark: "macOS Big Sur - Dark mode",
             FolderStyle.catalina: "macOS Catalina",
         }[self]
 
-    def size(self):
-        """Size of the folder in pixels, 
-        1 dimension is specified because the image is a square
+    def size(self) -> int:
+        """Size of the folder in pixels (1 dimension only because square)
+
+        :return: Size in pixels
         """
         return {
             FolderStyle.big_sur_light: 1024,
@@ -71,11 +76,11 @@ class FolderStyle(Enum):
             FolderStyle.catalina: 1024,
         }[self]
 
-    def icon_box_percentages(self):
-        """Size of the rect in percentages which contains the region to draw the icon
+    def icon_box_percentages(self) -> tuple[float, float, float, float]:
+        """Size of the rect in percentages which contains the region to
+        draw the icon
 
-        Returns:
-            (float * 4): (x1, y1, x2, y2); Coordinate percentages
+        :return: Coordinate percentages (x1, y1, x2, y2)
         """
         return {
             FolderStyle.big_sur_light: (0.086, 0.29, 0.914, 0.777),
@@ -83,12 +88,11 @@ class FolderStyle(Enum):
             FolderStyle.catalina: (0.0668, 0.281, 0.9332, 0.770),
         }[self]
 
-    def preview_crop_percentages(self):
-        """Minimum size of the rect in percentages which contains the 
+    def preview_crop_percentages(self) -> tuple[float, float, float, float]:
+        """Minimum size of the rect in percentages which contains the
         folder for displaying in the preview image
 
-        Returns:
-            (float * 4): (x1, y1, x2, y2); Coordinate percentages
+        :return: Coordinate percentages (x1, y1, x2, y2)
         """
         return {
             FolderStyle.big_sur_light: (0, 0.0888, 1.0, 0.9276),
@@ -96,11 +100,10 @@ class FolderStyle(Enum):
             FolderStyle.catalina: (0, 0.0972, 1.0, 0.896),
         }[self]
 
-    def baseColour(self):
+    def base_colour(self) -> tuple[int, int, int]:
         """The average colour of the folder where the icon is to be drawn
 
-        Returns:
-            (int * 3): (r, g, b); Colour
+        :return: Colour (r, g, b)
         """
         return {
             FolderStyle.big_sur_light: (116, 208, 251),
@@ -108,11 +111,10 @@ class FolderStyle(Enum):
             FolderStyle.catalina: (120, 210, 251),
         }[self]
 
-    def icon_colour(self):
+    def icon_colour(self) -> tuple[int, int, int]:
         """The average colour of the icon in default macOS folders
 
-        Returns:
-            (int * 3): (r, g, b); Colour
+        :return: Colour (r, g, b)
         """
         return {
             FolderStyle.big_sur_light: (63, 170, 229),
