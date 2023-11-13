@@ -1,17 +1,15 @@
 from copy import deepcopy
 import logging
 import os
-import time
 from typing import Optional
-from uuid import UUID
 import uuid
-from PySide6.QtCore import QObject, QRunnable, QThreadPool, Qt, Signal, Slot
+from PySide6.QtCore import QThreadPool, Signal
 from PySide6.QtGui import QAction, QDragEnterEvent, QDropEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication, QLineEdit, QMainWindow, QMenuBar, QVBoxLayout, QWidget
 from PIL.Image import Image
 
-from fancyfolders.constants import DEFAULT_FONT, ICON_SCALE_SLIDER_MAX, FolderStyle, IconGenerationMethod, SFFont
-from fancyfolders.imagetransformations import generate_folder_icon
+from fancyfolders.constants import FolderStyle, IconGenerationMethod
+from fancyfolders.threadsafefoldergeneration import FolderGeneratorWorker
 from fancyfolders.ui.components.composite.colourpalette import ColourPalette
 from fancyfolders.ui.components.composite.folderstyledropdown import FolderStyleDropdown
 from fancyfolders.ui.components.composite.saveiconpanel import SaveIconPanel
@@ -21,40 +19,7 @@ from fancyfolders.ui.components.composite.setlocationpanel import SetLocationPan
 
 from fancyfolders.ui.screens.aboutpanel import AboutPanel
 
-from fancyfolders.utilities import generateUniqueFolderName, set_folder_icon
-from fancyfolders.ui.components.centrefoldericon import CenterFolderIcon, CenterFolderIconContainer
-
-
-class FolderGeneratorWorker(QRunnable):
-    """Represents an asyncronous worker object that generates a new folder icon
-    """
-
-    def __init__(self, uuid: UUID, folderStyle: FolderStyle, **kwargs) -> None:
-        """Create a new folder generator worker with a unique ID, and the keyword
-        arguments needed for the folder generation method.
-
-        Args:
-            uuid (UUID): Unique ID for this worker
-            folderStyle (FolderStyle): FolderStyle of the folder to generate
-        """
-        super().__init__()
-        self.signals = self.FolderGeneratorSignals()
-        self.uuid = uuid
-        self.folderStyle = folderStyle
-        self.kwargs = kwargs
-
-    @Slot()
-    def run(self):
-        """Generates the folder icon and emits the resulting image
-        """
-        folderImage: Image = generate_folder_icon(
-            folderStyle=self.folderStyle, **self.kwargs)
-        self.signals.completed.emit(self.uuid, folderImage, self.folderStyle)
-
-    class FolderGeneratorSignals(QObject):
-        """Represents the completion signal for a FolderGeneratorWorker
-        """
-        completed = Signal(UUID, Image, FolderStyle)
+from fancyfolders.ui.components.centrefoldericon import CenterFolderIconContainer
 
 
 class MainWindow(QMainWindow):
@@ -66,6 +31,8 @@ class MainWindow(QMainWindow):
     generationMethod = IconGenerationMethod.NONE
     symbolText: str = ""
     iconImage: Image = None
+
+    stopSignal = Signal()
 
     def __init__(self):
         super().__init__()
@@ -171,15 +138,19 @@ class MainWindow(QMainWindow):
             # Create new worker task to generate folder icon
             # Ensure all parameters are immutable for thread safety
             worker = FolderGeneratorWorker(
-                folderGenerationTaskUUID, folderStyle=folderStyle,
+                folderGenerationTaskUUID, folder_style=folderStyle,
                 generationMethod=self.generationMethod, previewSize=None, iconScale=iconScale,
                 tintColour=tintColour, text=text, fontStyle=iconThickness,
                 image=deepcopy(self.iconImage))
 
             # Connect completion callback to the centreImage object, and set it to
             # receive the result of this task using its unique ID
-            worker.signals.completed.connect(self.centreImage.receiveImageData)
+            worker.signals.completed.connect(self.centreImage.receive_image_data)
             self.centreImage.setReadyToReceive(folderGenerationTaskUUID)
+
+            # Stop all other folder generation tasks and make this one stop too in the future
+            self.stopSignal.emit()
+            self.stopSignal.connect(worker.stop)
 
             # Start task
             self.threadPool.start(worker)

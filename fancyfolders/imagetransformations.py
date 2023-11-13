@@ -1,16 +1,18 @@
 from colorsys import hsv_to_rgb, rgb_to_hsv
 import math
+from typing import Callable
 from PIL import ImageFont, Image, ImageDraw, ImageFilter, ImageChops
 from fancyfolders.constants import BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR, INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET, OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont
 
-from fancyfolders.utilities import clamp, dividedColour, getFontLocation, get_first_font_installed, hsvToRgbInt, internal_resource_path, rgbIntToHsv
+from fancyfolders.utilities import clamp, divided_colour, get_font_location, get_first_font_installed, hsv_to_rgb_int, internal_resource_path, rgb_int_to_hsv
 
 
 def generate_folder_icon(folderStyle: FolderStyle = FolderStyle.big_sur_light,
                          generationMethod: IconGenerationMethod = IconGenerationMethod.NONE,
                          previewSize=None, iconScale=1.0, tintColour=None, text=None,
-                         fontStyle=SFFont.heavy, image=None):
-    """Generates a folder icon PIL image based on the specified generation method 
+                         fontStyle=SFFont.heavy, image=None,
+                         keepGoing: Callable[[], bool] = lambda: True) -> Image.Image:
+    """TODO REDO: Generates a folder icon PIL image based on the specified generation method 
     and other parameters. Can be generated from either text or an input image.
 
     Args:
@@ -36,35 +38,48 @@ def generate_folder_icon(folderStyle: FolderStyle = FolderStyle.big_sur_light,
         Image: PIL Image of the resulting folder icon
     """
 
+    # Set up exit check method to stop execution of this method if requested
+    from fancyfolders.threadsafefoldergeneration import TaskExitedException
+
+    def exitCheck():
+        if not keepGoing():
+            raise TaskExitedException
+
+    # -------------------------------------------------------------------------
     # Get base folder image
     folderImage = Image.open(internal_resource_path(
         "assets/" + folderStyle.filename()))
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Default size is the folder size, otherwise use the specified preview size
     if previewSize:
         size = previewSize
         folderImage = folderImage.resize((size, size))
     else:
         size = folderStyle.size()
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Darken shadow to match default macOS folders
     folderImage = _increasedShadow(
         folderImage, factor=FOLDER_SHADOW_INCREASE_FACTOR)
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Generate mask image based on icon generation method
     maskImage = None
-
     if generationMethod is IconGenerationMethod.NONE:
         if tintColour is None:
             return folderImage
         return adjustedColours(folderImage, folderStyle.baseColour(), tintColour)
-
     elif generationMethod is IconGenerationMethod.IMAGE:
         maskImage = _generateMaskFromImage(image)
-
     elif generationMethod is IconGenerationMethod.TEXT or generationMethod is IconGenerationMethod.SYMBOL:
         maskImage = _generateMaskFromText(text, size, fontStyle)
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Bounding box to place icon
     boundingBoxPercentages = (0.086, 0.29, 0.914, 0.777)
     boundingBox = tuple(int(size * percent)
@@ -72,53 +87,80 @@ def generate_folder_icon(folderStyle: FolderStyle = FolderStyle.big_sur_light,
     newBoundingBox = scaledBox(
         boundingBox, iconScale * ICON_BOX_SCALING_FACTOR, (size, size)
     )
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Fit the icon mask within the bounding box
     formattedMask = Image.new("L", (size, size), "black")
     scaledImage, pasteBox = _resizeImageInBox(
         maskImage, newBoundingBox)
     formattedMask.paste(scaledImage, pasteBox, scaledImage)
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Generate the center colour to be a desired colour after the multiply filter
-    centerColour = dividedColour(
+    centerColour = divided_colour(
         folderStyle.baseColour(), folderStyle.icon_colour())
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Calculate shadow colour to be slightly darker than the center colour
-    centerHue, centerSat, centerVal = rgbIntToHsv(centerColour)
+    centerHue, centerSat, centerVal = rgb_int_to_hsv(centerColour)
     shadowHsvColour = (centerHue, centerSat, centerVal *
                        INNER_SHADOW_COLOUR_SCALING_FACTOR)
-    shadowColour = hsvToRgbInt(shadowHsvColour)
+    shadowColour = hsv_to_rgb_int(shadowHsvColour)
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Create shadow insert image
     shadowImage = Image.composite(
         Image.new("RGB", formattedMask.size, centerColour),
         Image.new("RGB", formattedMask.size, shadowColour),
         formattedMask
     )
+    exitCheck()
+
     shadowImage = shadowImage.filter(
         ImageFilter.GaussianBlur(INNER_SHADOW_BLUR))
+
+    exitCheck()
     shadowImage = ImageChops.offset(
         shadowImage, 0, math.floor(size * INNER_SHADOW_Y_OFFSET))
+
+    exitCheck()
     shadowImage.putalpha(formattedMask)
     shadowInsert = ImageChops.multiply(folderImage, shadowImage)
 
+    exitCheck()
+
+    # -------------------------------------------------------------------------
     # Create highlight insert image
     highlightImage = Image.composite(
         Image.new("RGBA", formattedMask.size, "#131313"),
         Image.new("RGBA", formattedMask.size, "black"),
         formattedMask
     )
+    exitCheck()
+
     highlightImage = highlightImage.filter(
         ImageFilter.GaussianBlur(OUTER_HIGHLIGHT_BLUR))
+    exitCheck()
+
     highlightImage = ImageChops.offset(
         highlightImage, 0, math.floor(size * OUTER_HIGHLIGHT_Y_OFFSET))
+    exitCheck()
+
     highlightImage.putalpha(0)
     highlightInsert = ImageChops.add(folderImage, highlightImage)
+    exitCheck()
 
+    # -------------------------------------------------------------------------
     # Combine the two
     result = Image.alpha_composite(highlightInsert, shadowInsert)
+    exitCheck()
 
-    # Apply tint colour if specified
+    #
+    # Apply tint colour if specified, return result
     if tintColour is None:
         return result
     return adjustedColours(result, folderStyle.baseColour(), tintColour)
@@ -144,11 +186,11 @@ def _generateMaskFromText(text, image_size, fontStyle=SFFont.heavy):
     text = text[0:25]
 
     # Get the font path, either installed or the local backup
-    fontPath = getFontLocation(
-        fontStyle.filename(), includeInternal=False)
+    fontPath = get_font_location(
+        fontStyle.filename(), include_internal=False)
     if fontPath is None:
         fontPath = get_first_font_installed(
-            [fontStyle.filename()] + BACKUP_FONTS, includeinternal=True)
+            [fontStyle.filename()] + BACKUP_FONTS, include_internal=True)
 
     font = ImageFont.truetype(fontPath, int(image_size/2))
 
@@ -206,8 +248,8 @@ def adjustedColours(image: Image, baseColour, tintColour):
     Returns:
         _type_: _description_
     """
-    startHue, startSat, startVal = rgbIntToHsv(baseColour)
-    finalHue, finalSat, finalVal = rgbIntToHsv(tintColour)
+    startHue, startSat, startVal = rgb_int_to_hsv(baseColour)
+    finalHue, finalSat, finalVal = rgb_int_to_hsv(tintColour)
 
     hueOffset = finalHue - startHue
     satFactor = finalSat / startSat

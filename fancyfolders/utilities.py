@@ -3,23 +3,26 @@ from io import BytesIO
 import os
 import sys
 import Cocoa
+from PIL.Image import Image
+
 
 #######################
 # COLOUR UTILITIES
 #######################
 
 
-def dividedColour(starting_colour, final_colour):
+def divided_colour(starting_colour, final_colour):
     colour_channels = zip(starting_colour, final_colour)
-    return tuple([clamp(int(((255 * final) / start)), 0, 255) for start, final in colour_channels])
+    return tuple([clamp(int(((255 * final) / start)), 0, 255)
+                  for start, final in colour_channels])
 
 
-def rgbIntToHsv(rgb_colour):
+def rgb_int_to_hsv(rgb_colour):
     float_colours = [colour / 255 for colour in rgb_colour]
     return rgb_to_hsv(*float_colours)
 
 
-def hsvToRgbInt(hsv_colour):
+def hsv_to_rgb_int(hsv_colour):
     float_colours = hsv_to_rgb(*hsv_colour)
     return tuple([int(colour * 255) for colour in float_colours])
 
@@ -28,7 +31,7 @@ def hsvToRgbInt(hsv_colour):
 #######################
 
 
-def getFontLocation(font_pathname, includeInternal=False):
+def get_font_location(font_pathname, include_internal: bool = False):
     """Returns the path of the font if it is installed on the system. If not,
     returns None. May or may not include internal resources
 
@@ -45,7 +48,7 @@ def getFontLocation(font_pathname, includeInternal=False):
         "/Library/Fonts/",
         os.path.join(os.path.join(os.path.expanduser("~")), "Library/Fonts/")
     ]
-    if includeInternal:
+    if include_internal:
         possible_font_locations.insert(
             0, internal_resource_path("assets/fonts"))
 
@@ -55,30 +58,30 @@ def getFontLocation(font_pathname, includeInternal=False):
     return None
 
 
-def get_first_font_installed(font_list, includeinternal=True):
+def get_first_font_installed(font_list, include_internal: bool = True):
     """Returns the first font in the specified font list that is installed on the system,
     otherwise returns None
     """
     for font in font_list:
-        font_path = getFontLocation(font, includeinternal)
+        font_path = get_font_location(font, include_internal)
         if font_path is not None:
             return font_path
     return None
 
 
-def internal_resource_path(relative_path):
+def internal_resource_path(relative_path: str):
     """ Get absolute path to internal app resource, works for dev and for PyInstaller """
 
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+        base_path: str = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath("./..")
 
     return os.path.join(base_path, relative_path)
 
 
-def set_folder_icon(pil_image, path):
+def set_folder_icon(pil_image: Image, path: str):
     """Sets the icon of the file/directory at the specified path to the provided image
     using the native macOS API, interfaced through PyObjC.
 
@@ -96,7 +99,7 @@ def set_folder_icon(pil_image, path):
     Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(ns_image, path, 0)
 
 
-def generateUniqueFolderName(directory: str):
+def generate_unique_folder_name(directory: str):
     index = 1
     while True:
         new_folder_name = "untitled folder" + \
