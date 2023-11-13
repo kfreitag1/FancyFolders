@@ -1,5 +1,4 @@
 from typing import Optional
-from uuid import UUID
 
 from PIL.Image import Image
 from PIL.ImageQt import ImageQt
@@ -17,8 +16,6 @@ class CentreFolderIconContainer(QWidget):
     MINIMUM_SIZE = (400, 240)
     SPINNER_PADDING = 15
     SPINNER_COLOUR = (200, 200, 200)
-
-    receiving_uuid: UUID = None
 
     def __init__(self) -> None:
         super().__init__()
@@ -52,37 +49,14 @@ class CentreFolderIconContainer(QWidget):
 
         self.setLayout(self.container)
 
-    def set_ready_to_receive(self, uuid: UUID) -> None:
-        """Sets the CenterFolderIcon ready to receive an asynchronously
-        generated folder icon with the given unique ID. Once set, will disregard
-        the image data received from any previous tasks
-
-        :param uuid: Unique ID of latest folder icon generation task
-        """
-        self.receiving_uuid = uuid
+    def set_loading(self):
+        """Starts the spinner to indicate waiting for folder generation"""
         self.spinner.start()
-        # DEBUG
-        # print("READY TO RECEIVE " + str(uuid))
 
-    def receive_image_data(self, uuid: UUID, image: Image,
-                           folder_style: FolderStyle) -> None:
-        """Callback from an asynchronous folder icon generation method with a
-        given unique ID. If the ID matches the currently accepting one, accepts
-        the image data and outputs it to the screen.
-
-        :param uuid: Unique ID of completed task
-        :param image: Folder icon image
-        :param folder_style: Folder style of completed folder icon
-        """
-        if uuid == self.receiving_uuid:
-            self.folder_icon.set_folder_image(image, folder_style)
-            self.spinner.stop()
-            # DEBUG
-            # print("ACCEPTING " + str(uuid))
-        else:
-            pass
-            # DEBUG
-            # print("DENYING " + str(uuid))
+    def set_image(self, image: Image, folder_style: FolderStyle):
+        """Sets the folder icon after validating that it is the latest one"""
+        self.spinner.stop()
+        self.folder_icon.set_folder_image(image, folder_style)
 
 
 class CentreFolderIcon(QLabel):

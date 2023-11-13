@@ -19,16 +19,11 @@ class SetLocationPanel(InstructionPanel):
     new_location_filepath = os.path.join(
         os.path.join(os.path.expanduser("~")), "Desktop")
 
-    def __init__(self, on_change: Callable[[], None]):
-        """Constructs a new location instruction panel
-
-        :param on_change: Callback to run whenever the location is updated
-        """
+    def __init__(self):
+        """Constructs a new location instruction panel"""
         super().__init__(2, (72, 140, 161),
                          "Set folder to change, or location to make new folder",
                          extra_spacing=True)
-
-        self.on_change = on_change
 
         # Folder to change field
         self.existing_folder_name_field = NonEditableLine("Drag folder above")
@@ -45,7 +40,7 @@ class SetLocationPanel(InstructionPanel):
             "Change existing folder:", is_bold=False))
         existing_folder_layout.addWidget(self.existing_folder_name_field)
         self.existing_folder_radio = ContainerRadioButton(
-            existing_folder_layout, self.radio_buttons, self, on_change)
+            existing_folder_layout, self.radio_buttons, self)
 
         new_location_layout = QHBoxLayout()
         new_location_layout.setAlignment(Qt.AlignVCenter)
@@ -53,7 +48,7 @@ class SetLocationPanel(InstructionPanel):
             "Make a new folder in:", is_bold=False))
         new_location_layout.addWidget(self.new_folder_location)
         self.new_location_radio = ContainerRadioButton(
-            new_location_layout, self.radio_buttons, self, on_change, is_default=True)
+            new_location_layout, self.radio_buttons, self, is_default=True)
 
         container = QVBoxLayout()
         container.addWidget(self.existing_folder_radio)
@@ -73,8 +68,6 @@ class SetLocationPanel(InstructionPanel):
         if file_picker_dialog.exec():
             path = file_picker_dialog.selectedFiles()[0]
             self.set_new_folder_location_filepath(path)
-
-        self.on_change()
 
     def _update_ui(self):
         """Updates the UI to reflect the data that was set
@@ -100,7 +93,10 @@ class SetLocationPanel(InstructionPanel):
         :param filepath: Filepath, or None to remove previous filepath
         """
         self.existing_folder_filepath = filepath
-        self.existing_folder_radio.setChecked(filepath is not None)
+        if filepath is not None:
+            self.existing_folder_radio.setChecked(True)
+        else:
+            self.new_location_radio.setChecked(True)
         self._update_ui()
 
     def set_new_folder_location_filepath(self, filepath: str) -> None:

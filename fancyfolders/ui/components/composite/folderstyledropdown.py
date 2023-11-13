@@ -10,8 +10,7 @@ class FolderStyleDropdown(QComboBox):
     (macOS versions)
     """
 
-    def __init__(self, default_style: FolderStyle,
-                 on_change: Callable[[], None]) -> None:
+    def __init__(self, on_change: Callable[[], None]) -> None:
         """Constructs a new folder style dropdown
 
         :param default_style: Default folder style choice
@@ -22,11 +21,14 @@ class FolderStyleDropdown(QComboBox):
         # All possible folder styles
         self.addItems([style.display_name() for style in FolderStyle])
 
-        # Set default
-        self.setCurrentIndex(default_style.value)
-
         # Setup callback on change
         self.currentIndexChanged.connect(lambda _: on_change())
 
+        # Set default
+        self.reset()
+
     def get_folder_style(self) -> FolderStyle:
         return FolderStyle(self.currentIndex())
+
+    def reset(self) -> None:
+        self.setCurrentIndex(FolderStyle.big_sur_light.value)

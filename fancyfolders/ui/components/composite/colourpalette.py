@@ -25,13 +25,13 @@ class ColourPalette(QHBoxLayout):
         self.colour_button_group = QButtonGroup()
 
         # Create group of buttons, in order
-        colour_buttons = [ColourRadioButton(button_type=ColourButtonType.NO_COLOUR)]
-        colour_buttons += [ColourRadioButton(
+        self.colour_buttons = [ColourRadioButton(button_type=ColourButtonType.NO_COLOUR)]
+        self.colour_buttons += [ColourRadioButton(
             button_type=ColourButtonType.COLOUR, colour=tint_colour.value)
             for tint_colour in TintColour]
-        colour_buttons += [ColourRadioButton(button_type=ColourButtonType.MULTICOLOUR)]
+        self.colour_buttons += [ColourRadioButton(button_type=ColourButtonType.MULTICOLOUR)]
 
-        for colour_button in colour_buttons:
+        for colour_button in self.colour_buttons:
             # Add on click events to all the buttons, multicolour is special
             if colour_button.type is ColourButtonType.MULTICOLOUR:
                 colour_button.clicked.connect(self._choose_multicolour)
@@ -43,7 +43,7 @@ class ColourPalette(QHBoxLayout):
             self.addWidget(colour_button)
 
         # No colour is checked by default
-        colour_buttons[0].setChecked(True)
+        self.reset()
 
     def _choose_multicolour(self):
         """Opens a dialog panel to set the multicolour colour"""
@@ -76,3 +76,6 @@ class ColourPalette(QHBoxLayout):
             return self.current_multicolour
 
         raise ValueError("ColourButtonType is not one of the expected types")
+
+    def reset(self) -> None:
+        self.colour_buttons[0].setChecked(True)

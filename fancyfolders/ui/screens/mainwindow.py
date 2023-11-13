@@ -1,12 +1,13 @@
 import logging
 import os
 import uuid
+from uuid import UUID
 from copy import deepcopy
 from typing import Optional
 
 from PIL.Image import Image
 from PySide6.QtCore import QThreadPool, Signal
-from PySide6.QtGui import QAction, QDropEvent, QMouseEvent
+from PySide6.QtGui import QAction, QDropEvent, QMouseEvent, Qt
 from PySide6.QtWidgets import QApplication, QLineEdit, QMainWindow, QMenuBar, QVBoxLayout, QWidget
 
 from fancyfolders.constants import FolderStyle, IconGenerationMethod
@@ -19,6 +20,7 @@ from fancyfolders.ui.components.composite.scalethicknesssliders import ScaleThic
 from fancyfolders.ui.components.composite.seticontextpanel import SetIconTextPanel
 from fancyfolders.ui.components.composite.setlocationpanel import SetLocationPanel
 from fancyfolders.ui.screens.aboutpanel import AboutPanel
+from fancyfolders.utilities import generate_unique_folder_filename, set_folder_icon
 
 
 class MainWindow(QMainWindow):
@@ -32,6 +34,9 @@ class MainWindow(QMainWindow):
     symbol_text: str = ""
     icon_image: Image = None
 
+    # Asynchronous folder icon generation variables
+    uuid_to_wait_for: Optional[UUID] = None
+    folder_icon: Optional[Image] = None
     stop_all_previous_workers_signal = Signal()
 
     def __init__(self) -> None:
@@ -45,7 +50,7 @@ class MainWindow(QMainWindow):
 
         # Dropdown to select folder style
         self.folder_style_dropdown = FolderStyleDropdown(
-            FolderStyle.big_sur_light, lambda: self.update_folder_generation_variables(True))
+            lambda: self.update_folder_generation_variables(True))
         main_layout.addWidget(self.folder_style_dropdown)
 
         # Folder icon + drag and drop area
@@ -55,7 +60,8 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.centre_image)
 
         # Folder icon colour palette
-        self.colour_palette = ColourPalette(lambda: self.update_folder_generation_variables(True))
+        self.colour_palette = ColourPalette(
+            lambda: self.update_folder_generation_variables(True))
         main_layout.addLayout(self.colour_palette)
 
         # Icon scale and font weight slider container
@@ -65,11 +71,12 @@ class MainWindow(QMainWindow):
 
         # Main controls panels
         self.set_icon_panel = SetIconTextPanel(
-            lambda: self.update_folder_generation_variables(True, IconGenerationMethod.TEXT))
+            lambda: self.update_folder_generation_variables(
+                True, IconGenerationMethod.TEXT))
         main_layout.addWidget(self.set_icon_panel)
-        self.set_location_panel = SetLocationPanel(self.update_folder_generation_variables)
+        self.set_location_panel = SetLocationPanel()
         main_layout.addWidget(self.set_location_panel)
-        self.save_icon_panel = SaveIconPanel()
+        self.save_icon_panel = SaveIconPanel(self.save_icon, self.reset_icon)
         main_layout.addWidget(self.save_icon_panel)
 
         # Set up menu bar
@@ -120,7 +127,6 @@ class MainWindow(QMainWindow):
         icon_scale = self.scale_thickness_sliders.get_scale()
         icon_thickness = self.scale_thickness_sliders.get_thickness()
         icon_text = self.set_icon_panel.get_icon_text()
-        # makeNewFolder, outputFilepath = self.setLocationPanel.getOutputInfo() TODO
 
         # Check that there is text if in TEXT or SYMBOL mode, otherwise set to NONE mode
         if (self.generation_method is IconGenerationMethod.TEXT and not icon_text) or (
@@ -133,20 +139,20 @@ class MainWindow(QMainWindow):
         # Asynchronously generate new folder icon
         if generate_folder:
             # Keep track of unique ID for this task to only display latest one
-            folder_generation_task_uuid = uuid.uuid4()
+            task_uuid = uuid.uuid4()
 
             # Create new worker task to generate folder icon
             # Ensure all parameters are immutable for thread safety
             worker = FolderGeneratorWorker(
-                folder_generation_task_uuid, folder_style=folder_style,
+                task_uuid, folder_style=folder_style,
                 generation_method=self.generation_method, icon_scale=icon_scale,
                 tint_colour=tint_colour, text=text, font_style=icon_thickness,
                 image=deepcopy(self.icon_image))
 
             # Connect completion callback to the centreImage object, and set it to
             # receive the result of this task using its unique ID
-            worker.signals.completed.connect(self.centre_image.receive_image_data)
-            self.centre_image.set_ready_to_receive(folder_generation_task_uuid)
+            worker.signals.completed.connect(self.receive_folder_generation_data)
+            self.set_ready_to_receive_folder_generation_data(task_uuid)
 
             # Stop all other folder generation tasks and make this one stop too in the future
             self.stop_all_previous_workers_signal.emit()
@@ -155,21 +161,58 @@ class MainWindow(QMainWindow):
             # Start task
             self.thread_pool.start(worker)
 
-    # def clear_icon(self):
-    #     """Clears the current icon"""
-    #     self.icon_generation_method = IconGenerationMethod.NONE
-    #     self.icon_image = None
-    #     self.icon_text = None
-    #     self.icon_scale = 1
-    #     self.icon_font_style = DEFAULT_FONT
+    def set_ready_to_receive_folder_generation_data(self, task_uuid: UUID) -> None:
+        """Sets ready to receive an asynchronously generated folder icon with
+        the given unique ID. Once set, will disregard the image data received
+        from any previous tasks
 
-    #     self.icon_input_field.setText("")
-    #     self.scale_slider.setValue(int((ICON_SCALE_SLIDER_MAX - 1)/2) + 1)
-    #     self.font_weight_slider.setValue(self.icon_font_style.value)
+        :param task_uuid: Unique ID of latest folder icon generation task
+        """
+        self.uuid_to_wait_for = task_uuid
+        self.centre_image.set_loading()
 
-    #     self.update_preview_folder_image()
+    def receive_folder_generation_data(
+            self, task_uuid: UUID, image: Image,
+            folder_style: FolderStyle) -> None:
+        """Callback from an asynchronous folder icon generation method with a
+        given unique ID. If the ID matches the currently accepting one, accepts
+        the image data and outputs it to the screen.
 
-    # EVENT HANDLERS
+        :param task_uuid: Unique ID of completed task
+        :param image: Folder icon image
+        :param folder_style: Folder style of completed folder icon
+        """
+        if task_uuid == self.uuid_to_wait_for:
+            self.uuid_to_wait_for = None
+            self.folder_icon = image
+            self.centre_image.set_image(image, folder_style)
+
+    def save_icon(self):
+        """Saves the current folder icon to the existing or new location"""
+
+        # Get filepath of folder to change, or of new folder to generate
+        make_new_folder, filepath = self.set_location_panel.get_output_info()
+        if make_new_folder:
+            filepath = generate_unique_folder_filename(filepath)
+
+        # Reset existing folder settings
+        self.set_location_panel.set_existing_folder_filepath(None)
+
+        self.setCursor(Qt.BusyCursor)
+        # TODO: wait for folder generation if not complete yet
+        #       i.e. if self.uuid_to_wait_for is not None
+        set_folder_icon(self.folder_icon, filepath)
+        self.unsetCursor()
+
+    def reset_icon(self):
+        """Resets the current folder icon"""
+        print("ioshdf")
+        self.folder_style_dropdown.reset()
+        self.colour_palette.reset()
+        self.scale_thickness_sliders.reset()
+        self.set_icon_panel.reset()
+        self.update_folder_generation_variables(
+            True, IconGenerationMethod.NONE)
 
     def unified_drop(self, event: QDropEvent) -> None:
         """Called when a text/symbol/image/folder is dropped onto one of the
@@ -231,37 +274,3 @@ class MainWindow(QMainWindow):
 
         # Let mouse click event bubble through
         super().mousePressEvent(event)
-
-    ##############################
-    # FOLDER GENERATION METHODS
-    ##############################
-
-    # def generate_and_save_folder(self):
-    #     """Generates the folder icon using the local option variables and saves it to
-    #     the specified folder, or a new folder if none is provided.
-    #     """
-    #     # TODO check if image has already been created for the UI, just use this, if not then can
-    #     # generate the folder icon, or wait for it to be completed on the other thread
-
-    #     # Only set folder icon to specific folder once
-    #     path = self.output_folder
-    #     self.set_output_folder(None)
-
-    #     # If there is no specific path, generate a new folder
-    #     if path is None:
-    #         path = generateUniqueFolderName(self.output_location_directory)
-
-    #     # Operation takes a long time, set cursor to waiting
-    #     # TODO find a way to make a nicer cursor
-    #     self.setCursor(Qt.BusyCursor)
-
-    #     # Set folder icon to the highest resolution image
-    #     high_resolution_image = self.generate_folder_image()
-    #     self.centreImage.set_image(high_resolution_image)
-    #     set_folder_icon(high_resolution_image, path)
-
-    #     # Operation is finished, set cursor to normal
-    #     self.unsetCursor()
-
-    #     # DEV IMAGE SAVE
-    #     # high_resolution_image.save(os.path.join(self.output_location_directory, "imageoutput-" + str(randint(1, 99999)) + ".png"))

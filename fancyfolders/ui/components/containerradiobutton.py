@@ -10,13 +10,13 @@ class ContainerRadioButton(QWidget):
     """
 
     def __init__(self, layout: QLayout, group: QButtonGroup, parent: QWidget,
-                 on_change: Callable[[], None], is_default=False) -> None:
+                 on_change: Callable[[], None] = None, is_default=False) -> None:
         """Constructs a new radio button with custom container
 
         :param layout: Child container to show to the right of the radio button
         :param group: Buttongroup to put the radio button in
         :param parent: Parent widget
-        :param on_change: Callback whenever a selection is made
+        :param on_change: Optional callback whenever a selection is made
         :param is_default: Whether the radio button is the default choice
         """
         super().__init__()

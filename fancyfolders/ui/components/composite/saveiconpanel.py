@@ -1,3 +1,5 @@
+from typing import Callable
+
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy
 
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
@@ -8,18 +10,17 @@ class SaveIconPanel(InstructionPanel):
     reset the folder icon
     """
 
-    def __init__(self):
+    def __init__(self, on_save: Callable[[], None],
+                 on_clear: Callable[[], None]) -> None:
         super().__init__(3, (72, 140, 161))
 
         # Save icon
         self.generate_button = QPushButton("Save folder icon")
-        # TODO: connect to action
-        # self.generate_button.clicked.connect(self.generate_and_save_folder)
+        self.generate_button.clicked.connect(on_save)
 
         # Clear button
         self.clear_button = QPushButton("Reset icon")
-        # TODO: connect to action
-        # self.clear_button.clicked.connect(self.clear_icon)
+        self.clear_button.clicked.connect(on_clear)
         self.clear_button.setSizePolicy(
             QSizePolicy.Fixed, QSizePolicy.Minimum)
 

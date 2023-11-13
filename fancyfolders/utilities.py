@@ -125,7 +125,7 @@ def set_folder_icon(pil_image: Image, path: str) -> None:
     Cocoa.NSWorkspace.sharedWorkspace().setIcon_forFile_options_(ns_image, path, 0)
 
 
-def generate_unique_folder_name(directory: str) -> str:
+def generate_unique_folder_filename(directory: str) -> str:
     """Generates a unique folder name in the 'untitled folder' format, in the
     specified directory. I.e. if the folder already exists, increment the number
     and try again
@@ -143,7 +143,7 @@ def generate_unique_folder_name(directory: str) -> str:
             os.mkdir(path)
             break
         index += 1
-    return new_folder_name
+    return path
 
 #######################
 # MATH UTILITIES

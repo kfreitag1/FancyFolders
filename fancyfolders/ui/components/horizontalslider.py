@@ -51,5 +51,8 @@ class HorizontalSlider(QGridLayout):
 
         self.addWidget(self.slider, 0, 0, Qt.AlignBottom)
 
-    def get_value(self) -> int:
+    def getValue(self) -> int:
         return self.slider.value()
+
+    def setValue(self, value: int) -> None:
+        self.slider.setValue(value)

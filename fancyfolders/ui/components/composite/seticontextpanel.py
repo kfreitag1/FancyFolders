@@ -39,3 +39,6 @@ class SetIconTextPanel(InstructionPanel):
 
     def get_icon_text(self) -> str:
         return self.icon_text_input.text()
+
+    def reset(self) -> None:
+        self.icon_text_input.setText("")

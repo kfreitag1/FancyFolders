@@ -30,12 +30,12 @@ class ScaleThicknessSliders(QHBoxLayout):
         self.scale_slider.slider.valueChanged.connect(lambda _: on_change())
         self.addLayout(self.scale_slider)
 
-        # Font weight slider
-        self.font_weight_slider = HorizontalSlider(
+        # Thickness slider
+        self.thickness_slider = HorizontalSlider(
             label="Thickness", total_num_ticks=len(SFFont),
             initial_value=DEFAULT_FONT.value, tick_style=TickStyle.EACH)
-        self.font_weight_slider.slider.valueChanged.connect(lambda _: on_change())
-        self.addLayout(self.font_weight_slider)
+        self.thickness_slider.slider.valueChanged.connect(lambda _: on_change())
+        self.addLayout(self.thickness_slider)
 
     def get_scale(self) -> float:
         """Gets the selected icon scale, normalized to predetermined range
@@ -51,4 +51,8 @@ class ScaleThicknessSliders(QHBoxLayout):
 
         :return: Enum representing font thickness
         """
-        return SFFont(self.font_weight_slider.slider.value())
+        return SFFont(self.thickness_slider.slider.value())
+
+    def reset(self) -> None:
+        self.scale_slider.setValue(int((ICON_SCALE_SLIDER_MAX - 1) / 2) + 1)
+        self.thickness_slider.setValue(DEFAULT_FONT.value)
