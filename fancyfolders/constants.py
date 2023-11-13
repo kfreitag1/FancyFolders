@@ -131,9 +131,10 @@ class TintColour(Enum):
     yellow = (255, 236, 209)
     green = (226, 240, 203)
     teal = (181, 234, 215)
+    lightblue = (181, 228, 245)
     purple = (199, 206, 234)
-    white = (250, 249, 246)
     cream = (255, 250, 240)
+    white = (250, 249, 246)
 
 
 class SFFont(Enum):
