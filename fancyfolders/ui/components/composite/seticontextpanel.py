@@ -3,6 +3,7 @@ from typing import Callable
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QLineEdit
 
+from fancyfolders.constants import MAIN_PANEL_COLOUR
 from fancyfolders.ui.components.customlabel import CustomLabel
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
 
@@ -17,7 +18,7 @@ class SetIconTextPanel(InstructionPanel):
 
         :param on_change: Callback to run whenever the text is edited
         """
-        super().__init__(1, (72, 140, 161),
+        super().__init__(1, MAIN_PANEL_COLOUR,
                          "Set folder icon / image / text",
                          extra_spacing=True)
 

@@ -2,6 +2,7 @@ from typing import Callable
 
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy
 
+from fancyfolders.constants import MAIN_PANEL_COLOUR
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
 
 
@@ -12,7 +13,7 @@ class SaveIconPanel(InstructionPanel):
 
     def __init__(self, on_save: Callable[[], None],
                  on_clear: Callable[[], None]) -> None:
-        super().__init__(3, (72, 140, 161))
+        super().__init__(3, MAIN_PANEL_COLOUR)
 
         # Save icon
         self.generate_button = QPushButton("Save folder icon")
