@@ -68,7 +68,7 @@ def get_font_location(font_pathname: str,
     ]
     if include_internal:
         possible_font_locations.insert(
-            0, internal_resource_path("assets/fonts"))
+            0, internal_resource_path("../assets/fonts"))
 
     for location in possible_font_locations:
         if font_pathname in os.listdir(location):
@@ -100,11 +100,10 @@ def internal_resource_path(relative_path: str) -> str:
     :return: Absolute filepath to resource
     """
 
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path: str = sys._MEIPASS
-    except AttributeError:
-        base_path = os.path.abspath("./..")
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS
+    else:
+        base_path = str(os.path.abspath("./.."))
 
     return os.path.join(base_path, relative_path)
 

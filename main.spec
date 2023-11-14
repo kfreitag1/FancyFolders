@@ -1,6 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
 
 a = Analysis(
     ['fancyfolders/main.py'],
@@ -12,12 +11,9 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
@@ -39,7 +35,6 @@ exe = EXE(
 coll = COLLECT(
     exe,
     a.binaries,
-    a.zipfiles,
     a.datas,
     strip=False,
     upx=True,
@@ -49,7 +44,9 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='Fancy Folders.app',
-    version='1.0',
+    version='2.0',
     icon="assets/app_icon.icns",
-    bundle_identifier=None,
+    bundle_identifier="ca.kfreitag.fancyfolders",
 )
+
+# note, need to do: .venv/bin/pyinstaller main.spec
