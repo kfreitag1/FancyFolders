@@ -30,14 +30,13 @@ class HorizontalSlider(QGridLayout):
         self.label.setSizePolicy(
             QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
         self.label.setAlignment(Qt.AlignHCenter)
-        self.label.setMinimumHeight(52)
+        self.label.setMinimumHeight(44)
         self.addWidget(self.label, 0, 0)
 
         # Construct horizontal slider with given parameters
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(1)
         self.slider.setMaximum(total_num_ticks)
-        self.slider.setMinimumHeight(45)
         self.slider.setValue(initial_value)
         self.slider.setTracking(True)
 
