@@ -5,7 +5,7 @@ from uuid import UUID
 from copy import deepcopy
 from typing import Optional
 
-from PIL.Image import Image
+from PIL.Image import Image, fromqimage
 from PySide6.QtCore import QThreadPool, Signal
 from PySide6.QtGui import QAction, QDropEvent, QMouseEvent, Qt
 from PySide6.QtWidgets import QApplication, QLineEdit, QMainWindow, QMenuBar, QVBoxLayout, QWidget
@@ -227,7 +227,7 @@ class MainWindow(QMainWindow):
 
         # Dragged data is an image
         if data.hasFormat("application/x-qt-image"):
-            self.icon_image = Image.fromqimage(data.imageData())
+            self.icon_image = fromqimage(data.imageData())
             self.update_folder_generation_variables(
                 True, IconGenerationMethod.IMAGE)
             event.accept()
