@@ -5,7 +5,7 @@ from uuid import UUID
 from copy import deepcopy
 from typing import Optional
 
-from PIL.Image import Image, fromqimage
+from PIL.Image import Image, fromqimage, open
 from PySide6.QtCore import QThreadPool, Signal
 from PySide6.QtGui import QAction, QDropEvent, QMouseEvent, Qt
 from PySide6.QtWidgets import QApplication, QLineEdit, QMainWindow, QMenuBar, QVBoxLayout, QWidget
@@ -147,7 +147,7 @@ class MainWindow(QMainWindow):
                 task_uuid, folder_style=folder_style,
                 generation_method=self.generation_method, icon_scale=icon_scale,
                 tint_colour=tint_colour, text=text, font_style=icon_thickness,
-                image=deepcopy(self.icon_image))
+                image=self.icon_image)
 
             # Connect completion callback to the centreImage object, and set it to
             # receive the result of this task using its unique ID
@@ -248,7 +248,7 @@ class MainWindow(QMainWindow):
                 # Dragged item is a file, which could be an image
                 elif os.path.isfile(path):
                     try:
-                        self.icon_image = Image.open(path)
+                        self.icon_image = open(path)
                         self.update_folder_generation_variables(
                             True, IconGenerationMethod.IMAGE)
                         event.accept()
