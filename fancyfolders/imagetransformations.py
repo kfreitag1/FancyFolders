@@ -68,8 +68,7 @@ def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light,
         return adjusted_colours(folder_image, folder_style.base_colour(), tint_colour)
     elif generation_method is IconGenerationMethod.IMAGE:
         mask_image = _generate_mask_from_image(image)
-    elif (generation_method is IconGenerationMethod.TEXT or
-          generation_method is IconGenerationMethod.SYMBOL):
+    elif generation_method is IconGenerationMethod.TEXT:
         mask_image = _generate_mask_from_text(text, size, font_style)
     exit_check()
 

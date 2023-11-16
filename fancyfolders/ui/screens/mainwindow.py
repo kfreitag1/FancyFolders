@@ -128,13 +128,9 @@ class MainWindow(QMainWindow):
         icon_thickness = self.scale_thickness_sliders.get_thickness()
         icon_text = self.set_icon_panel.get_icon_text()
 
-        # Check that there is text if in TEXT or SYMBOL mode, otherwise set to NONE mode
-        if (self.generation_method is IconGenerationMethod.TEXT and not icon_text) or (
-                self.generation_method is IconGenerationMethod.SYMBOL and not self.symbol_text):
+        # Check that there is text if in TEXT mode, otherwise set to NONE mode
+        if self.generation_method is IconGenerationMethod.TEXT and not icon_text:
             self.generation_method = IconGenerationMethod.NONE
-
-        # Set text to be either the dragged symbol text or the typed text
-        text = self.symbol_text if self.generation_method is IconGenerationMethod.SYMBOL else icon_text
 
         # Asynchronously generate new folder icon
         if generate_folder:
@@ -146,7 +142,7 @@ class MainWindow(QMainWindow):
             worker = FolderGeneratorWorker(
                 task_uuid, folder_style=folder_style,
                 generation_method=self.generation_method, icon_scale=icon_scale,
-                tint_colour=tint_colour, text=text, font_style=icon_thickness,
+                tint_colour=tint_colour, text=icon_text, font_style=icon_thickness,
                 image=self.icon_image)
 
             # Connect completion callback to the centreImage object, and set it to
@@ -256,10 +252,9 @@ class MainWindow(QMainWindow):
                         logging.exception(
                             "Dragged item is not an image file, or could not open")
 
-        # Dragged item includes text (SF Symbol)
+        # Dragged item includes text (SF Symbol), replace icon text field
         elif data.hasFormat("text/plain"):
-            self.symbol_text = data.text()
-            self.update_folder_generation_variables(True, IconGenerationMethod.SYMBOL)
+            self.set_icon_panel.set_icon_text(data.text())
             event.accept()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:

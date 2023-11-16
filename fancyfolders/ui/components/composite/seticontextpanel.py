@@ -24,6 +24,8 @@ class SetIconTextPanel(InstructionPanel):
                          "Set folder icon / image / text",
                          extra_spacing=True)
 
+        self.on_change = on_change
+
         # Text icon input
         self.icon_text_input = QLineEdit()
 
@@ -51,6 +53,10 @@ class SetIconTextPanel(InstructionPanel):
 
     def get_icon_text(self) -> str:
         return self.icon_text_input.text()
+
+    def set_icon_text(self, text: str) -> None:
+        self.icon_text_input.setText(text)
+        self.on_change()
 
     def reset(self) -> None:
         self.icon_text_input.setText("")

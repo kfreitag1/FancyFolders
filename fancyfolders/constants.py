@@ -37,7 +37,6 @@ class IconGenerationMethod(Enum):
     NONE = 0
     IMAGE = 1
     TEXT = 2
-    SYMBOL = 3
 
 
 class FolderStyle(Enum):
