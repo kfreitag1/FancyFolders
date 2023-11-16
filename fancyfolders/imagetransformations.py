@@ -172,11 +172,9 @@ def _generate_mask_from_text(text, image_size, font_style=SFFont.heavy):
     #  add text aligning
     #  add letter size independent mode (lowercase letters not same height as uppercase)
 
-    # Get the font path, either installed or the local backup
-    font_filepath = get_font_location(font_style.filename(), include_internal=False)
-    if font_filepath is None:
-        font_filepath = get_first_font_installed(
-            [font_style.filename()] + BACKUP_FONTS, include_internal=True)
+    # Get the font path, locally first then check system
+    font_filepath = get_first_font_installed(
+        [font_style.filename()] + BACKUP_FONTS, include_internal=True)
 
     font = ImageFont.truetype(font_filepath, int(image_size / 2))
 

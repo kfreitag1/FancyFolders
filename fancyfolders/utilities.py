@@ -68,7 +68,7 @@ def get_font_location(font_pathname: str,
     ]
     if include_internal:
         possible_font_locations.insert(
-            0, internal_resource_path("../assets/fonts"))
+            0, internal_resource_path("assets/fonts"))
 
     for location in possible_font_locations:
         if font_pathname in os.listdir(location):
