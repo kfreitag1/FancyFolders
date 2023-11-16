@@ -2,7 +2,6 @@ import logging
 import os
 import uuid
 from uuid import UUID
-from copy import deepcopy
 from typing import Optional
 
 from PIL.Image import Image, fromqimage, open
@@ -202,7 +201,6 @@ class MainWindow(QMainWindow):
 
     def reset_icon(self):
         """Resets the current folder icon"""
-        print("ioshdf")
         self.folder_style_dropdown.reset()
         self.colour_palette.reset()
         self.scale_thickness_sliders.reset()
