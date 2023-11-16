@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import QHBoxLayout, QLineEdit
 
-from fancyfolders.constants import MAIN_PANEL_COLOUR, DEFAULT_FONT
+from fancyfolders.constants import PANEL1_COLOUR, SFFont
 from fancyfolders.ui.components.customlabel import CustomLabel
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
 from fancyfolders.utilities import get_font_location
@@ -20,8 +20,8 @@ class SetIconTextPanel(InstructionPanel):
 
         :param on_change: Callback to run whenever the text is edited
         """
-        super().__init__(1, MAIN_PANEL_COLOUR,
-                         "Set folder icon / image / text",
+        super().__init__(1, PANEL1_COLOUR,
+                         "Set folder icon",
                          extra_spacing=True)
 
         self.on_change = on_change

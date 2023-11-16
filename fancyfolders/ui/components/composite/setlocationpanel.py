@@ -1,10 +1,10 @@
 import os
-from typing import Callable, Optional
+from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QButtonGroup, QFileDialog, QHBoxLayout, QVBoxLayout
 
-from fancyfolders.constants import MAIN_PANEL_COLOUR
+from fancyfolders.constants import PANEL2_COLOUR
 from fancyfolders.ui.components.containerradiobutton import ContainerRadioButton
 from fancyfolders.ui.components.customlabel import CustomLabel
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
@@ -22,7 +22,7 @@ class SetLocationPanel(InstructionPanel):
 
     def __init__(self):
         """Constructs a new location instruction panel"""
-        super().__init__(2, MAIN_PANEL_COLOUR,
+        super().__init__(2, PANEL2_COLOUR,
                          "Set folder to change, or location to make new folder",
                          extra_spacing=True)
 

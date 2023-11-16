@@ -33,12 +33,15 @@ class InstructionPanel(QWidget):
         # Wrapping layout to add title if desired
         self.wrap_layout = QVBoxLayout()
         self.wrap_layout.setContentsMargins(
-            self.SPACING * 2, math.floor(self.SPACING * 1.5), self.SPACING * 2,
-            self.SPACING * 2 if extra_spacing else 0)
+            self.SPACING * 2,
+            math.floor(self.SPACING * 1.5),
+            self.SPACING * 2,
+            math.floor(self.SPACING * (1.8 if extra_spacing else 1)))
         self.wrap_layout.setSpacing(0)
 
         if title is not None:
             self.wrap_layout.addWidget(CustomLabel(title))
+            self.wrap_layout.addSpacing(math.floor(self.SPACING * 1.2))
 
         self.setLayout(self.wrap_layout)
 
