@@ -1,11 +1,13 @@
 from typing import Callable
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import QHBoxLayout, QLineEdit
 
-from fancyfolders.constants import MAIN_PANEL_COLOUR
+from fancyfolders.constants import MAIN_PANEL_COLOUR, DEFAULT_FONT
 from fancyfolders.ui.components.customlabel import CustomLabel
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
+from fancyfolders.utilities import get_font_location
 
 
 class SetIconTextPanel(InstructionPanel):
@@ -24,8 +26,17 @@ class SetIconTextPanel(InstructionPanel):
 
         # Text icon input
         self.icon_text_input = QLineEdit()
-        self.icon_text_input.setMaxLength(20)
-        self.icon_text_input.setPlaceholderText("icon text")
+
+        # Custom font to support symbols
+        font_filepath = get_font_location(DEFAULT_FONT.filename())
+        font_id = QFontDatabase.addApplicationFont(font_filepath)
+        font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
+        font = self.icon_text_input.font()
+        font.setFamily(font_family)
+        self.icon_text_input.setFont(font)
+
+        self.icon_text_input.setMaxLength(25)
+        self.icon_text_input.setPlaceholderText("Icon text")
         self.icon_text_input.setAlignment(Qt.AlignCenter)
         self.icon_text_input.textChanged.connect(lambda _: on_change())
 
