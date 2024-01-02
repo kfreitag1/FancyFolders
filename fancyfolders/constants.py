@@ -143,12 +143,13 @@ class TintColour(Enum):
 class SFFont(Enum):
     ultralight = 1
     thin = 2
-    regular = 3
-    medium = 4
-    semibold = 5
-    bold = 6
-    heavy = 7
-    black = 8
+    light = 3
+    regular = 4
+    medium = 5
+    semibold = 6
+    bold = 7
+    heavy = 8
+    black = 9
 
     def filename(self):
         """Filename of the font in the assets/font folder
@@ -158,6 +159,7 @@ class SFFont(Enum):
         return {
             SFFont.ultralight: "SF-Pro-Rounded-Ultralight.otf",
             SFFont.thin: "SF-Pro-Rounded-Thin.otf",
+            SFFont.light: "SF-Pro-Rounded-Light.otf",
             SFFont.regular: "SF-Pro-Rounded-Regular.otf",
             SFFont.medium: "SF-Pro-Rounded-Medium.otf",
             SFFont.semibold: "SF-Pro-Rounded-Semibold.otf",
