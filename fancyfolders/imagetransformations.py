@@ -5,12 +5,12 @@ from typing import Callable, cast
 from PIL import ImageFont, ImageDraw, ImageFilter, ImageChops, Image
 
 from fancyfolders.constants import (
-    BACKUP_FONTS, ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR,
+    ICON_BOX_SCALING_FACTOR, FOLDER_SHADOW_INCREASE_FACTOR,
     INNER_SHADOW_BLUR, INNER_SHADOW_COLOUR_SCALING_FACTOR, INNER_SHADOW_Y_OFFSET,
     OUTER_HIGHLIGHT_BLUR, OUTER_HIGHLIGHT_Y_OFFSET, FolderStyle, IconGenerationMethod, SFFont)
 from fancyfolders.utilities import (
-    clamp, divided_colour, get_font_location, get_first_font_installed,
-    hsv_to_rgb_int, internal_resource_path, rgb_int_to_hsv)
+    clamp, divided_colour,
+    hsv_to_rgb_int, internal_resource_path, rgb_int_to_hsv, get_internal_font_location)
 
 
 def generate_folder_icon(folder_style: FolderStyle = FolderStyle.big_sur_light,
@@ -171,9 +171,8 @@ def _generate_mask_from_text(text, image_size, font_style=SFFont.heavy):
     #  add text aligning
     #  add letter size independent mode (lowercase letters not same height as uppercase)
 
-    # Get the font path, locally first then check system
-    font_filepath = get_first_font_installed(
-        [font_style.filename()] + BACKUP_FONTS, include_internal=True)
+    font_filepath = get_internal_font_location(font_style.filename())
+    assert font_filepath is not None
 
     font = ImageFont.truetype(font_filepath, int(image_size / 2))
 
@@ -214,8 +213,8 @@ def _generate_mask_from_image(image: Image.Image) -> Image.Image:
     return ImageChops.invert(white_background)
 
 
-def adjusted_colours(image: Image.Image, base_colour: tuple[float, float, float],
-                     tint_colour: tuple[float, float, float]) -> Image.Image:
+def adjusted_colours(image: Image.Image, base_colour: tuple[int, int, int],
+                     tint_colour: tuple[int, int, int]) -> Image.Image:
     """Changes the colours across the specified image by an amount that would
     shift the 'base colour' to the 'tint colour.'
 

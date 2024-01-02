@@ -151,6 +151,10 @@ class SFFont(Enum):
     black = 8
 
     def filename(self):
+        """Filename of the font in the assets/font folder
+
+        :return: Filename
+        """
         return {
             SFFont.ultralight: "SF-Pro-Rounded-Ultralight.otf",
             SFFont.thin: "SF-Pro-Rounded-Thin.otf",
@@ -164,4 +168,3 @@ class SFFont(Enum):
 
 
 DEFAULT_FONT = SFFont.bold
-BACKUP_FONTS = ["SFNS.ttf", "System San Francisco Text Medium.ttf"]

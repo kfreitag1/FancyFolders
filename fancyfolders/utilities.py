@@ -2,7 +2,7 @@ from colorsys import hsv_to_rgb, rgb_to_hsv
 from io import BytesIO
 import os
 import sys
-from typing import cast, Optional, List
+from typing import cast
 
 import Cocoa
 from PIL.Image import Image
@@ -47,49 +47,14 @@ def hsv_to_rgb_int(hsv_colour: tuple[float, float, float]) -> tuple[int, int, in
     return cast(tuple[int, int, int],
                 tuple([int(colour * 255) for colour in float_colours]))
 
+
 #######################
 # FILESYSTEM UTILITIES
 #######################
 
-
-def get_font_location(font_pathname: str,
-                      include_internal: bool = False) -> Optional[str]:
-    """Returns the path of the font if it is installed on the system. If not,
-    returns None. May or may not include internal resources
-
-    :param font_pathname: Name of the font with .ttf or .otf
-    :param include_internal: Whether to check internal resources or not
-    :return: Path to the font, if found
-    """
-    possible_font_locations = [
-        "/System/Library/Fonts/",
-        "/Library/Fonts/",
-        os.path.join(os.path.join(os.path.expanduser("~")), "Library/Fonts/")
-    ]
-    if include_internal:
-        possible_font_locations.insert(
-            0, internal_resource_path("assets/fonts"))
-
-    for location in possible_font_locations:
-        if font_pathname in os.listdir(location):
-            return os.path.join(location, font_pathname)
-    return None
-
-
-def get_first_font_installed(font_list: List[str],
-                             include_internal: bool = True) -> Optional[str]:
-    """Returns the first font in the specified font list that is installed
-    on the system, otherwise returns None
-
-    :param font_list: List of font names
-    :param include_internal: Whether to check internal resources or not
-    :return: Path to the font, if found
-    """
-    for font in font_list:
-        font_path = get_font_location(font, include_internal)
-        if font_path is not None:
-            return font_path
-    return None
+def get_internal_font_location(font_filename: str) -> str:
+    base_pathname = internal_resource_path("assets/fonts")
+    return os.path.join(base_pathname, font_filename)
 
 
 def internal_resource_path(relative_path: str) -> str:

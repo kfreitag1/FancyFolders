@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLineEdit
 from fancyfolders.constants import PANEL1_COLOUR, SFFont
 from fancyfolders.ui.components.customlabel import CustomLabel
 from fancyfolders.ui.components.instructionpanel import InstructionPanel
-from fancyfolders.utilities import get_font_location
+from fancyfolders.utilities import get_internal_font_location
 
 
 class SetIconTextPanel(InstructionPanel):
@@ -30,7 +30,7 @@ class SetIconTextPanel(InstructionPanel):
         self.icon_text_input = QLineEdit()
 
         # Custom font to support symbols
-        font_filepath = get_font_location(DEFAULT_FONT.filename())
+        font_filepath = get_internal_font_location(SFFont.regular.filename())
         font_id = QFontDatabase.addApplicationFont(font_filepath)
         font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
         font = self.icon_text_input.font()
