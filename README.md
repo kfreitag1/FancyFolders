@@ -21,7 +21,9 @@
 
 <h3><a href="https://github.com/kfreitag1/FancyFolders/releases/latest/download/FancyFolders.dmg">:floppy_disk: Download latest Fancy Folders release</a></h3>
 
-<h3><a href="https://developer.apple.com/sf-symbols/">:floppy_disk: Download SF Symbols 3 or 4</a></h3>
+_**Note:** Please follow the first launch instructions in order to use the app. This is needed for all apps produced by [unidentified developers](https://support.apple.com/en-ca/guide/mac-help/mh40616/mac), i.e. those without Apple developer accounts._
+
+<h3><a href="https://developer.apple.com/sf-symbols/">:floppy_disk: Download latest SF Symbols</a></h3>
 
 ## Features
 
@@ -46,7 +48,7 @@
 
 ## Licence
 
-Fancy Folders is released under the [GPL v3 Licence](https://www.gnu.org/licenses/gpl-3.0.en.html)
+Fancy Folders is released under the [GPL v3 Licence](https://www.gnu.org/licenses/gpl-3.0.en.html). Fonts used in this project and the SF symbols app are the property of Apple and are not included within this licence.
 
 ## Special thanks
 
